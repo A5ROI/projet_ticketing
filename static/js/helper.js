@@ -104,10 +104,14 @@ async function sendResponse() {
 
         if (result.ok) {
             document.getElementById('ticketResponse').value = '';
+            // Recharger les messages immédiatement après l'envoi
             await loadTicketMessages(currentTicketId);
             showNotification('Réponse envoyée avec succès', 'success');
+        } else {
+            showNotification('Erreur lors de l\'envoi de la réponse', 'danger');
         }
     } catch (error) {
+        console.error('Erreur:', error);
         showNotification('Erreur lors de l\'envoi de la réponse', 'danger');
     }
 }
@@ -116,12 +120,42 @@ async function loadTicketMessages(ticketId) {
     try {
         const response = await fetch(`/api/messages/${ticketId}`);
         const messages = await response.json();
-        updateConversationDisplay(messages);
+        
+        console.log('Messages reçus:', messages); // Debug
+        
+        const conversationHistory = document.getElementById('conversationHistory');
+        conversationHistory.innerHTML = '';
+
+        if (!messages || messages.length === 0) {
+            conversationHistory.innerHTML = `
+                <div class="text-center p-3">
+                    <i class="fas fa-comments text-muted"></i>
+                    <p class="text-muted">Aucun message pour le moment</p>
+                </div>
+            `;
+            return;
+        }
+
+        messages.forEach(msg => {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${msg.sender_type}-message`;
+            messageDiv.innerHTML = `
+                <div class="message-header">
+                    <strong>${msg.sender_type === 'helper' ? 'Support' : 'Utilisateur'}</strong>
+                    <span class="text-muted">${msg.created_at}</span>
+                </div>
+                <div class="message-content">${msg.content.replace(/\n/g, '<br>')}</div>
+            `;
+            conversationHistory.appendChild(messageDiv);
+        });
+        
+        conversationHistory.scrollTop = conversationHistory.scrollHeight;
+        
     } catch (error) {
+        console.error('Erreur dans loadTicketMessages:', error);
         showNotification('Erreur lors du chargement des messages', 'danger');
     }
 }
-
 
 async function closeTicket() {
     const closeReason = document.getElementById('closeReason').value;
@@ -203,22 +237,48 @@ function updateActiveButton(clickedButton) {
     clickedButton.classList.add('active');
 }
 
-function openResponseModal(ticketId) {
-    currentTicketId = ticketId;
-    resetModalForActiveTicket();
-    loadTicketDetails(ticketId);
-    const responseModal = new bootstrap.Modal(document.getElementById('responseModal'));
-    responseModal.show();
-}
-
 async function loadTicketDetails(ticketId) {
     try {
-        const response = await fetch(`/api/helper/tickets/${ticketId}`);
+        const response = await fetch(`/api/tickets/${ticketId}/details`); 
         const ticket = await response.json();
+        
+        if (ticket.error) {
+            showNotification(ticket.error, 'danger');
+            return;
+        }
+        
         displayTicketDetails(ticket);
-        await loadTicketMessages(ticketId);
+        
     } catch (error) {
+        console.error('Erreur dans loadTicketDetails:', error);
         showNotification('Erreur lors du chargement des détails du ticket', 'danger');
+    }
+}
+
+async function openResponseModal(ticketId) {
+    currentTicketId = ticketId;
+    resetModalForActiveTicket();
+    
+    // S'assurer que le modal existe
+    const responseModal = document.getElementById('responseModal');
+    if (!responseModal) {
+        showNotification('Erreur: Modal non trouvé', 'danger');
+        return;
+    }
+
+    try {
+        // Charger d'abord les détails du ticket
+        await loadTicketDetails(ticketId);
+        
+        // Charger les messages avant d'afficher le modal
+        await loadTicketMessages(ticketId);
+        
+        // Afficher le modal une fois que tout est chargé
+        const modal = new bootstrap.Modal(responseModal);
+        modal.show();
+    } catch (error) {
+        console.error('Erreur:', error);
+        showNotification('Erreur lors de l\'ouverture du ticket', 'danger');
     }
 }
 
@@ -238,7 +298,7 @@ function displayTicketDetails(ticket) {
         </div>
         <div class="mt-2">
             <strong>Description:</strong>
-            <p class="mb-0">${ticket.description.replace(/\n/g, '<br>')}</p>
+            <p class="mb-0">${ticket.description ? ticket.description.replace(/\n/g, '<br>') : 'Aucune description'}</p>
         </div>
         ${ticket.attachments ? displayAttachments(ticket.attachments) : ''}
     `;
@@ -262,27 +322,16 @@ function displayAttachments(attachments) {
     `;
 }
 
-function updateConversationDisplay(messages) {
-    const conversationHistory = document.getElementById('conversationHistory');
-    conversationHistory.innerHTML = messages.map(msg => `
-        <div class="message ${msg.sender_type}-message">
-            <div class="message-header">
-                <strong>${msg.username}</strong>
-                <span class="text-muted">${msg.formatted_date}</span>
-            </div>
-            <div class="message-content">${msg.content.replace(/\n/g, '<br>')}</div>
-        </div>
-    `).join('');
-    
-    conversationHistory.scrollTop = conversationHistory.scrollHeight;
-}
-
 function resetModalForActiveTicket() {
     document.querySelector('#responseModal .modal-header').classList.remove('bg-secondary');
     document.querySelector('#responseModal .modal-header').classList.add('bg-primary');
     document.querySelector('#responseModal .modal-title').innerHTML = '<i class="fas fa-reply"></i> Conversation';
     document.getElementById('activeChatSection').style.display = 'block';
-    document.getElementById('closedTicketSection').style.display = 'none';
+    
+    const closedTicketSection = document.getElementById('closedTicketSection');
+    if (closedTicketSection) {
+        closedTicketSection.style.display = 'none';
+    }
 }
 
 function openCloseModal(ticketId) {
@@ -292,6 +341,7 @@ function openCloseModal(ticketId) {
 }
 
 function insertTemplate() {
+
     const templateSelect = document.getElementById('responseTemplate');
     const responseTextarea = document.getElementById('ticketResponse');
     const selectedTemplate = templateSelect.value;
@@ -303,14 +353,10 @@ function insertTemplate() {
 
 // Fonctions utilitaires
 function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleString('fr-FR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    if (!dateString || dateString === 'Invalid Date') {
+        return 'Non spécifiée';
+    }
+    return dateString; // Utiliser directement le format du backend
 }
 
 function formatCategory(category) {
@@ -395,4 +441,134 @@ function debounce(func, wait) {
         clearTimeout(timeout);
         timeout = setTimeout(later, wait);
     };
+}
+
+async function viewClosedTicketDetails(ticketId) {
+    try {
+        const response = await fetch(`/api/tickets/${ticketId}/details`);
+        const ticket = await response.json();
+
+        // Modifier le titre et l'apparence du modal
+        const modalTitle = document.querySelector('#responseModal .modal-title');
+        modalTitle.innerHTML = `<i class="fas fa-eye"></i> Récapitulatif du ticket fermé de ${ticket.username}`;
+        document.querySelector('#responseModal .modal-header').classList.remove('bg-primary');
+        document.querySelector('#responseModal .modal-header').classList.add('bg-secondary');
+
+        // Masquer la section de chat active et afficher la section fermée
+        document.getElementById('activeChatSection').style.display = 'none';
+        document.getElementById('closedTicketSection').style.display = 'block';
+        
+        // Afficher les détails du ticket
+        document.getElementById('ticketDetails').innerHTML = `
+            <div class="ticket-summary">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p><strong>Utilisateur:</strong> ${ticket.username}</p>
+                        <p><strong>Sujet:</strong> ${ticket.subject}</p>
+                        <p><strong>Catégorie:</strong> ${formatCategory(ticket.category)}</p>
+                        <p><strong>Priorité:</strong> ${ticket.priority}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Date de création:</strong> ${ticket.created_at}</p>
+                        <p><strong>Date de fermeture:</strong> ${ticket.closed_at || 'Non spécifiée'}</p>
+                        <p><strong>Raison:</strong> ${ticket.close_reason || 'Non spécifiée'}</p>
+                        <p><strong>Statut:</strong> ${ticket.status}</p>
+                    </div>
+                </div>
+
+                <div class="mt-3 mb-3">
+                    <h6>Description</h6>
+                    <div class="p-3 bg-light rounded">
+                        ${ticket.description.replace(/\n/g, '<br>')}
+                    </div>
+                </div>
+
+                ${ticket.attachments ? `
+                    <div class="mt-3">
+                        <h6>Pièces jointes</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            ${ticket.attachments.map(img => `
+                                <div class="image-preview" onclick="openImageModal('${img}')" style="cursor: pointer;">
+                                    <img src="${img}" class="img-thumbnail" 
+                                         style="height: 100px; width: 100px; object-fit: cover;">
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+
+        // Afficher l'historique des conversations
+        const closedConversationHistory = document.getElementById('closedConversationHistory');
+        if (ticket.messages && ticket.messages.length > 0) {
+            closedConversationHistory.innerHTML = ticket.messages.map(msg => `
+                <div class="message ${msg.sender_type}-message">
+                    <div class="message-header">
+                        <strong>${msg.username || 'Anonyme'}</strong>
+                        <span class="text-muted">${msg.formatted_date}</span>
+                    </div>
+                    <div class="message-content">${msg.content.replace(/\n/g, '<br>')}</div>
+                </div>
+            `).join('');
+        } else {
+            closedConversationHistory.innerHTML = '<p class="text-muted">Aucun message dans l\'historique</p>';
+        }
+
+        // Afficher le modal
+        const responseModal = new bootstrap.Modal(document.getElementById('responseModal'));
+        responseModal.show();
+    } catch (error) {
+        console.error('Erreur:', error);
+        showNotification('Erreur lors du chargement des détails du ticket', 'danger');
+    }
+}
+
+async function resetData() {
+    console.log('Fonction resetData appelée');
+    try {
+        const result = await Swal.fire({
+            title: 'Êtes-vous sûr ?',
+            text: "Cette action supprimera toutes les données des tickets. Cette action est irréversible !",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Oui, supprimer',
+            cancelButtonText: 'Annuler'
+        });
+
+        console.log('Résultat confirmation:', result);
+
+        if (result.isConfirmed) {
+            console.log('Envoi requête reset');
+            const response = await fetch('/api/helper/reset-data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+            console.log('Réponse serveur:', data);
+
+            if (data.success) {
+                Swal.fire(
+                    'Supprimé !',
+                    'Les données ont été réinitialisées avec succès.',
+                    'success'
+                );
+                loadAllTickets();
+            } else {
+                throw new Error(data.error || 'Une erreur est survenue');
+            }
+        }
+    } catch (error) {
+        console.error('Erreur détaillée:', error);
+        Swal.fire(
+            'Erreur',
+            'Une erreur est survenue lors de la réinitialisation des données.',
+            'error'
+        );
+    }
 }

@@ -2,6 +2,7 @@ from flask import Flask, render_template
 from database import db
 from api.tickets import init_tickets_routes
 from api.messages import init_messages_routes
+from api.reset import init_reset_routes
 
 def create_app():
     app = Flask(__name__)
@@ -27,6 +28,7 @@ def create_app():
     # Initialisation des routes API
     init_tickets_routes(app)
     init_messages_routes(app)
+    init_reset_routes(app)
 
     return app
 

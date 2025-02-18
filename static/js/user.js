@@ -148,23 +148,32 @@ async function filterTicketsByStatus(status) {
 
 async function searchTickets(query) {
     try {
-        const userId = getCurrentUserId();
-        const response = await fetch(`/api/tickets/search?q=${query}&user_id=${userId}`);
+        const response = await fetch(`/api/user/tickets/search?q=${query}`);
+        if (!response.ok) {
+            throw new Error('Erreur lors de la recherche');
+        }
+        
         const tickets = await response.json();
         displayTickets(tickets);
     } catch (error) {
+        console.error('Erreur de recherche:', error);
         showNotification('Erreur lors de la recherche', 'danger');
     }
 }
+
 
 function displayTickets(tickets) {
     const tbody = document.querySelector('#userTicketsTable tbody');
     tbody.innerHTML = '';
 
-    if (tickets.length === 0) {
+    if (!tickets || tickets.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" class="text-center">Aucun ticket trouvé</td>
+                <td colspan="7" class="text-center">
+                    <div class="alert alert-info m-3">
+                        <i class="fas fa-info-circle"></i> Aucun ticket trouvé.
+                    </div>
+                </td>
             </tr>
         `;
         return;
@@ -175,21 +184,7 @@ function displayTickets(tickets) {
         let formattedDate;
         try {
             if (ticket.created_at) {
-                // Si la date est déjà au format souhaité (depuis SQL)
-                if (typeof ticket.created_at === 'string' && ticket.created_at.includes('/')) {
-                    formattedDate = ticket.created_at;
-                } else {
-                    // Sinon, on la formate
-                    const date = new Date(ticket.created_at);
-                    formattedDate = date.toLocaleString('fr-FR', {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false
-                    }).replace(',', '');
-                }
+                formattedDate = ticket.created_at;
             } else {
                 formattedDate = 'Date inconnue';
             }
@@ -263,17 +258,14 @@ async function sendMessage(event) {
 async function loadChatHistory(ticketId) {
     try {
         const response = await fetch(`/api/messages/${ticketId}`);
-        const data = await response.json();
+        const messages = await response.json();
         
-        if (data.error) {
-            showNotification(data.error, 'warning');
-            return;
-        }
+        console.log('Messages reçus:', messages); // Debug
         
         const chatMessages = document.getElementById('chatMessages');
         chatMessages.innerHTML = '';
-        
-        if (!data.messages || data.messages.length === 0) {
+
+        if (!messages || messages.length === 0) {
             chatMessages.innerHTML = `
                 <div class="text-center p-3">
                     <i class="fas fa-comments text-muted"></i>
@@ -282,32 +274,41 @@ async function loadChatHistory(ticketId) {
             `;
             return;
         }
-        
-        data.messages.forEach(msg => {
-            if (msg.content) {  // Vérifier que le message a du contenu
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `chat-message message-${msg.sender_type}`;
-                messageDiv.innerHTML = `
-                    <div class="message-content">${msg.content}</div>
-                    <small class="message-time">${msg.formatted_date}</small>
-                `;
-                chatMessages.appendChild(messageDiv);
-            }
+
+        messages.forEach(msg => {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message message-${msg.sender_type}`;
+            messageDiv.innerHTML = `
+                <div class="message-content">${msg.content.replace(/\n/g, '<br>')}</div>
+                <small class="message-time">${msg.created_at}</small>
+            `;
+            chatMessages.appendChild(messageDiv);
         });
         
         chatMessages.scrollTop = chatMessages.scrollHeight;
+        
     } catch (error) {
-        console.error('Erreur lors du chargement des messages:', error);
+        console.error('Erreur dans loadChatHistory:', error);
         showNotification('Erreur lors du chargement des messages', 'danger');
     }
 }
 
-function openChat(ticketId) {
-    currentChatTicketId = ticketId;
-    document.getElementById('chatWidget').style.display = 'block';
-    document.getElementById('chatTicketId').textContent = `Ticket #${ticketId}`;
-    loadChatHistory(ticketId);
+async function openChat(ticketId) {
+    try {
+        // Charger les détails du ticket pour obtenir le username
+        const response = await fetch(`/api/tickets/${ticketId}/details`);
+        const ticket = await response.json();
+        
+        currentChatTicketId = ticketId;
+        document.getElementById('chatWidget').style.display = 'block';
+        document.getElementById('chatTicketId').textContent = `Ticket de ${ticket.username}`;
+        loadChatHistory(ticketId);
+    } catch (error) {
+        console.error('Erreur:', error);
+        showNotification('Erreur lors de l\'ouverture du chat', 'danger');
+    }
 }
+
 
 function minimizeChat() {
     document.getElementById('chatWidget').classList.toggle('minimized');
@@ -417,4 +418,113 @@ function setupEventListeners() {
 function setupNotifications() {
     // Pour une future implémentation de WebSocket
     console.log('Notifications setup - à implémenter avec WebSocket');
+}
+
+async function viewTicket(ticketId) {
+    try {
+        // Charger les détails du ticket
+        const ticketResponse = await fetch(`/api/tickets/${ticketId}/details`);
+        if (!ticketResponse.ok) {
+            throw new Error('Erreur lors de la récupération des détails du ticket');
+        }
+        const ticket = await ticketResponse.json();
+
+        // Charger les messages du ticket
+        const messagesResponse = await fetch(`/api/messages/${ticketId}`);
+        const messages = await messagesResponse.json();
+
+        const modalContent = `
+            <div class="modal fade" id="viewTicketModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header ${ticket.status.toLowerCase() === 'fermé' ? 'bg-secondary' : 'bg-primary'} text-white">
+                            <h5 class="modal-title">
+                                <i class="fas fa-eye"></i> 
+                                ${ticket.status.toLowerCase() === 'fermé' ? 
+                                    `Récapitulatif du ticket de ${ticket.username}` : 
+                                    `Détails du ticket de ${ticket.username}`}
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <p><strong>Utilisateur:</strong> ${ticket.username}</p>
+                                    <p><strong>Sujet:</strong> ${ticket.subject}</p>
+                                    <p><strong>Catégorie:</strong> ${getCategoryLabel(ticket.category)}</p>
+                                    <p><strong>Priorité:</strong> ${ticket.priority}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Date de création:</strong> ${ticket.created_at}</p>
+                                    ${ticket.status.toLowerCase() === 'fermé' ? `
+                                        <p><strong>Date de fermeture:</strong> ${ticket.closed_at || 'Non spécifiée'}</p>
+                                        <p><strong>Raison:</strong> ${ticket.close_reason || 'Non spécifiée'}</p>
+                                    ` : ''}
+                                    <p><strong>Statut:</strong> ${ticket.status}</p>
+                                </div>
+                            </div>
+
+                            <div class="mt-3">
+                                <h6>Description</h6>
+                                <div class="p-3 bg-light rounded">
+                                    ${ticket.description ? ticket.description.replace(/\n/g, '<br>') : 'Aucune description'}
+                                </div>
+                            </div>
+
+                            ${ticket.attachments ? `
+                                <div class="mt-3">
+                                    <h6>Pièces jointes</h6>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        ${ticket.attachments.map(img => `
+                                            <div class="image-preview" onclick="openImageModal('${img}')" style="cursor: pointer;">
+                                                <img src="${img}" class="img-thumbnail" 
+                                                    style="height: 100px; width: 100px; object-fit: cover;">
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+
+                            ${messages && messages.length > 0 ? `
+                                <div class="mt-3">
+                                    <h6>Historique des échanges</h6>
+                                    <div class="conversation-history">
+                                        ${messages.map(msg => `
+                                            <div class="message ${msg.sender_type}-message">
+                                                <div class="message-header">
+                                                    <strong>${msg.sender_type === 'helper' ? 'Support' : 'Utilisateur'}</strong>
+                                                    <span class="text-muted">${msg.created_at}</span>
+                                                </div>
+                                                <div class="message-content">${msg.content.replace(/\n/g, '<br>')}</div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : '<p class="text-muted">Aucun message dans l\'historique</p>'}
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Supprimer l'ancien modal s'il existe
+        const oldModal = document.getElementById('viewTicketModal');
+        if (oldModal) {
+            oldModal.remove();
+        }
+
+        // Ajouter le nouveau modal
+        document.body.insertAdjacentHTML('beforeend', modalContent);
+
+        // Afficher le modal
+        const modal = new bootstrap.Modal(document.getElementById('viewTicketModal'));
+        modal.show();
+
+    } catch (error) {
+        console.error('Erreur:', error);
+        showNotification('Erreur lors de l\'affichage des détails du ticket', 'danger');
+    }
 }
