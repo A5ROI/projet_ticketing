@@ -1,0 +1,119 @@
+/* Styles globaux */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.navbar {
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+.navbar-brand i {
+    margin-right: 8px;
+}
+
+.card {
+    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+    border: none;
+    box-shadow: 0 4px 6px rgba(0,0,0,.1);
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0,0,0,.15);
+}
+
+.card i {
+    transition: transform 0.3s ease-in-out;
+}
+
+.card:hover i {
+    transform: scale(1.1);
+}
+
+.btn {
+    padding: 0.5rem 1.5rem;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.btn i {
+    margin-right: 8px;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,.2);
+}
+
+/* Styles pour les badges de priorité */
+.priority-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.875rem;
+}
+
+.priority-badge i {
+    font-size: 14px;
+}
+
+.priority-badge.priority-haute {
+    background-color: #ffe9e9;
+    color: #dc3545;
+}
+
+.priority-badge.priority-moyenne {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.priority-badge.priority-basse {
+    background-color: #e9f6ea;
+    color: #28a745;
+}
+
+/* Styles existants pour les badges de statut */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.875rem;
+}
+
+.status-badge i {
+    font-size: 14px;
+}
+
+.status-badge.status-en.attente {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.status-badge.status-en.cours {
+    background-color: #cce5ff;
+    color: #004085;
+}
+
+.status-badge.status-fermé {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+/* Animation pour l'icône de spinner */
+.fa-spin {
+    animation: fa-spin 2s infinite linear;
+}
+
+@keyframes fa-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}

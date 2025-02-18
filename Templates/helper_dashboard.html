@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}Système de Tickets - Espace Support{% endblock %}
+
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/helper.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-filter"></i> Filtres</h5>
+                </div>
+                    <div class="list-group list-group-flush">
+                        <button class="list-group-item list-group-item-action active" data-filter="all">
+                            <i class="fas fa-ticket-alt"></i> Tous les tickets
+                        </button>
+                        <button class="list-group-item list-group-item-action text-warning" data-filter="En attente">
+                            <i class="fas fa-clock text-warning"></i> En attente
+                        </button>
+                        <button class="list-group-item list-group-item-action text-primary" data-filter="En cours">
+                            <i class="fas fa-spinner fa-spin text-primary"></i> En cours
+                        </button>
+                        <button class="list-group-item list-group-item-action text-success" data-filter="Fermé">
+                            <i class="fas fa-check-circle text-success"></i> Fermés
+                        </button>
+                    </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-sort"></i> Trier par priorité</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <button class="list-group-item list-group-item-action" data-priority="Haute">
+                        <i class="fas fa-exclamation-circle text-danger"></i> Priorité haute
+                    </button>
+                    <button class="list-group-item list-group-item-action" data-priority="Moyenne">
+                        <i class="fas fa-exclamation-circle text-warning"></i> Priorité moyenne
+                    </button>
+                    <button class="list-group-item list-group-item-action" data-priority="Basse">
+                        <i class="fas fa-exclamation-circle text-success"></i> Priorité basse
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-list"></i> Liste des tickets</h5>
+                    <div class="input-group w-50">
+                        <input type="text" class="form-control" id="ticketSearch" 
+                               placeholder="Rechercher un ticket...">
+                        <button class="btn btn-outline-secondary" type="button">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                    <button class="btn btn-danger ms-2" onclick="resetAllData()">
+                        <i class="fas fa-trash"></i> Réinitialiser les données
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover" id="helperTicketsTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Statut</th>
+                                    <th>Sujet</th>
+                                    <th>Catégorie</th>
+                                    <th>Priorité</th>
+                                    <th>Date</th>
+                                    <th class="text-center">Actions</th>
+                                </tr>
+                            </thead>                            
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Response Modal -->
+<div class="modal fade" id="responseModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-reply"></i> Conversation
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Détails du ticket -->
+                <div class="ticket-details mb-3">
+                    <h6 class="border-bottom pb-2">Détails du ticket</h6>
+                    <div id="ticketDetails" class="bg-light p-3 rounded"></div>
+                </div>
+                
+                <!-- Zone de chat (pour les tickets actifs) -->
+                <div id="activeChatSection">
+                    <div class="chat-container">
+                        <div class="conversation-history" id="conversationHistory">
+                            <!-- Les messages seront ajoutés ici -->
+                        </div>
+                        <div class="chat-input-area">
+                            <textarea class="form-control mb-2" id="ticketResponse" rows="3" 
+                                    placeholder="Écrivez votre réponse..."></textarea>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <select class="form-select w-auto" id="responseTemplate" onchange="insertTemplate()">
+                                    <option value="">Modèles de réponse...</option>
+                                    <option value="template1">Accusé de réception</option>
+                                    <option value="template2">Demande d'informations</option>
+                                    <option value="template3">Solution standard</option>
+                                </select>
+                                <button type="button" class="btn btn-primary" onclick="sendResponse()">
+                                    <i class="fas fa-paper-plane"></i> Envoyer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Zone de résumé (pour les tickets fermés) -->
+                <div id="closedTicketSection" style="display: none;">
+                    <div class="conversation-history mt-4">
+                        <h6 class="border-bottom pb-2">Historique des échanges</h6>
+                        <div id="closedConversationHistory"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Close Ticket Modal -->
+<div class="modal fade" id="closeTicketModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-times-circle"></i> Fermer le ticket
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Êtes-vous sûr de vouloir fermer ce ticket ?</p>
+                <select class="form-select" id="closeReason">
+                    <option value="resolved">Problème résolu</option>
+                    <option value="invalid">Demande invalide</option>
+                    <option value="duplicate">Ticket en double</option>
+                    <option value="other">Autre raison</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-danger" onclick="closeTicket()">
+                    <i class="fas fa-check"></i> Confirmer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notifications -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="helperToast" class="toast" role="alert">
+        <div class="toast-header">
+            <i class="fas fa-bell me-2"></i>
+            <strong class="me-auto">Notification</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="toastMessage"></div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/helper.js') }}"></script>
+{% endblock %}
