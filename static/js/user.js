@@ -15,7 +15,6 @@ document.addEventListener('DOMContentLoaded', function() {
     showSection('tickets');
     loadUserTickets();
     setupEventListeners();
-    setupNotifications();
 });
 
 // Gestion des images
@@ -147,14 +146,150 @@ async function filterTicketsByStatus(status) {
 }
 
 async function searchTickets(query) {
+    // Mapping des catégories pour la recherche progressive
+    const categoryMapping = {
+        'g': 'compte',
+        'ge': 'compte',
+        'ges': 'compte',
+        'gest': 'compte',
+        'gesti': 'compte',
+        'gestio': 'compte',
+        'gestion': 'compte',
+        'gestion ': 'compte',
+        'gestion d': 'compte',
+        'gestion de': 'compte',
+        'gestion de ': 'compte',
+        'gestion de c': 'compte',
+        'gestion de co': 'compte',
+        'gestion de com': 'compte',
+        'gestion de comp': 'compte',
+        'gestion de compt': 'compte',
+        'gestion de compte': 'compte',
+
+        // Technique
+        't': 'technique',
+        'te': 'technique',
+        'tec': 'technique',
+        'tech': 'technique',
+        'techn': 'technique',
+        'techni': 'technique',
+        'techniq': 'technique',
+        'techniqu': 'technique',
+        'technique': 'technique',
+        'p': 'technique',
+        'pr': 'technique',
+        'pro': 'technique',
+        'prob': 'technique',
+        'probl': 'technique',
+        'proble': 'technique',
+        'problem': 'technique',
+        'probleme': 'technique',
+        'problème': 'technique',
+        'probleme t': 'technique',
+        'problème t': 'technique',
+        'probleme te': 'technique',
+        'problème te': 'technique',
+        'probleme tec': 'technique',
+        'problème tec': 'technique',
+        'probleme tech': 'technique',
+        'problème tech': 'technique',
+        'probleme techn': 'technique',
+        'problème techn': 'technique',
+        'probleme techni': 'technique',
+        'problème techni': 'technique',
+        'probleme techniq': 'technique',
+        'problème techniq': 'technique',
+        'probleme techniqu': 'technique',
+        'problème techniqu': 'technique',
+        'probleme technique': 'technique',
+        'problème technique': 'technique',
+
+        // Facturation
+        'f': 'facturation',
+        'fa': 'facturation',
+        'fac': 'facturation',
+        'fact': 'facturation',
+        'factu': 'facturation',
+        'factur': 'facturation',
+        'factura': 'facturation',
+        'facturat': 'facturation',
+        'facturati': 'facturation',
+        'facturatio': 'facturation',
+        'facturation': 'facturation',
+
+        // Autre
+        'a': 'autre',
+        'au': 'autre',
+        'aut': 'autre',
+        'autr': 'autre',
+        'autre': 'autre'
+    };
+
     try {
-        const response = await fetch(`/api/user/tickets/search?q=${query}`);
+        const searchTerm = query.trim().toLowerCase();
+        const mappedTerm = categoryMapping[searchTerm] || searchTerm;
+
+        const response = await fetch(`/api/user/tickets/search?q=${encodeURIComponent(searchTerm)}`);
         if (!response.ok) {
             throw new Error('Erreur lors de la recherche');
         }
         
         const tickets = await response.json();
-        displayTickets(tickets);
+        
+        // Fonction pour vérifier si une chaîne est une date valide
+        const isValidDate = (dateStr) => {
+            const dateRegex = /^(\d{1,2})[/-](\d{1,2})[/-]?(\d{0,4})?$/;
+            return dateRegex.test(dateStr);
+        };
+
+        // Fonction pour formater une date pour la comparaison
+        const formatDateForComparison = (dateStr) => {
+            return dateStr.split(' ')[0]; // Prend seulement la partie date
+        };
+
+        // Filtrage plus précis des résultats
+        const filteredTickets = tickets.filter(ticket => {
+            const searchTermLower = searchTerm.toLowerCase();
+            
+            // Recherche par date
+            if (isValidDate(searchTermLower)) {
+                const ticketDate = formatDateForComparison(ticket.created_at);
+                return ticketDate.includes(searchTermLower);
+            }
+
+            // Pour les catégories
+            if (Object.values(categoryMapping).includes(ticket.category.toLowerCase())) {
+                for (const [key, value] of Object.entries(categoryMapping)) {
+                    if (value === ticket.category.toLowerCase() && key.startsWith(searchTermLower)) {
+                        return true;
+                    }
+                }
+            }
+            
+            // Pour les sujets
+            if (searchTermLower.length > 2) {
+                const subjectMatch = ticket.subject.toLowerCase().includes(searchTermLower);
+                if (subjectMatch) {
+                    const words = ticket.subject.toLowerCase().split(' ');
+                    return words.some(word => 
+                        word.startsWith(searchTermLower) || 
+                        searchTermLower.startsWith(word) ||
+                        word.includes(searchTermLower)
+                    );
+                }
+            }
+            
+            // Autres critères de recherche
+            return (
+                ticket.description.toLowerCase().includes(searchTermLower) ||
+                ticket.priority.toLowerCase().includes(searchTermLower) ||
+                ticket.status.toLowerCase().includes(searchTermLower) ||
+                ticket.username.toLowerCase().includes(searchTermLower) ||
+                ticket.created_at.includes(searchTermLower)
+            );
+        });
+
+        displayTickets(filteredTickets);
     } catch (error) {
         console.error('Erreur de recherche:', error);
         showNotification('Erreur lors de la recherche', 'danger');
@@ -303,6 +438,7 @@ async function openChat(ticketId) {
         document.getElementById('chatWidget').style.display = 'block';
         document.getElementById('chatTicketId').textContent = `Ticket de ${ticket.username}`;
         loadChatHistory(ticketId);
+        setupMessageChecking();
     } catch (error) {
         console.error('Erreur:', error);
         showNotification('Erreur lors de l\'ouverture du chat', 'danger');
@@ -315,6 +451,9 @@ function minimizeChat() {
 }
 
 function closeChat() {
+    if (checkMessagesInterval) {
+        clearInterval(checkMessagesInterval);
+    }
     document.getElementById('chatWidget').style.display = 'none';
     currentChatTicketId = null;
 }
@@ -415,10 +554,33 @@ function setupEventListeners() {
     }
 }
 
-function setupNotifications() {
-    // Pour une future implémentation de WebSocket
-    console.log('Notifications setup - à implémenter avec WebSocket');
+let checkMessagesInterval;
+
+function setupMessageChecking() {
+    if (currentChatTicketId) {
+        // Arrêter l'intervalle précédent s'il existe
+        if (checkMessagesInterval) {
+            clearInterval(checkMessagesInterval);
+        }
+
+        // Vérifier les nouveaux messages toutes les 5 secondes
+        checkMessagesInterval = setInterval(async () => {
+            try {
+                const response = await fetch(`/api/messages/check-new/${currentChatTicketId}`);
+                const data = await response.json();
+                
+                if (data.hasNew && data.message.sender_type === 'helper') {
+                    // Mettre à jour le chat
+                    await loadChatHistory(currentChatTicketId);
+                    showNotification('Nouveau message du support !', 'info');
+                }
+            } catch (error) {
+                console.error('Erreur lors de la vérification des messages:', error);
+            }
+        }, 5000);
+    }
 }
+
 
 async function viewTicket(ticketId) {
     try {

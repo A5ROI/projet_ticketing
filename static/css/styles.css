@@ -117,3 +117,41 @@ body {
         transform: rotate(360deg);
     }
 }
+
+@keyframes blinkBackground {
+    0% { background-color: transparent; }
+    50% { background-color: rgba(255, 193, 7, 0.3); }
+    100% { background-color: transparent; }
+}
+
+.notification-blink {
+    animation: blinkBackground 2s infinite;
+}
+
+.has-new-message {
+    position: relative;
+}
+
+.has-new-message::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 8px;
+    background-color: #ffc107;
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: translateY(-50%) scale(1); opacity: 1; }
+    50% { transform: translateY(-50%) scale(1.5); opacity: 0.5; }
+    100% { transform: translateY(-50%) scale(1); opacity: 1; }
+}
+
+#chatWidget.minimized.has-new-message {
+    border: 2px solid #ffc107;
+    animation: pulse 1.5s infinite;
+}

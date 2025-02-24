@@ -127,7 +127,91 @@ def init_tickets_routes(app):
     @app.route('/api/user/tickets/search', endpoint='user_search_tickets')
     def search_user_tickets():
         try:
-            search_term = request.args.get('q', '').lower()
+            search_term = request.args.get('q', '').lower().strip()
+            
+            # Mapping des catégories avec versions partielles
+            category_mapping = {
+                # Gestion de compte - toutes les combinaisons possibles
+                'g': 'compte',
+                'ge': 'compte',
+                'ges': 'compte',
+                'gest': 'compte',
+                'gesti': 'compte',
+                'gestio': 'compte',
+                'gestion': 'compte',
+                'gestion ': 'compte',
+                'gestion d': 'compte',
+                'gestion de': 'compte',
+                'gestion de ': 'compte',
+                'gestion de c': 'compte',
+                'gestion de co': 'compte',
+                'gestion de com': 'compte',
+                'gestion de comp': 'compte',
+                'gestion de compt': 'compte',
+                'gestion de compte': 'compte',
+
+                # Technique - toutes les combinaisons possibles
+                't': 'technique',
+                'te': 'technique',
+                'tec': 'technique',
+                'tech': 'technique',
+                'techn': 'technique',
+                'techni': 'technique',
+                'techniq': 'technique',
+                'techniqu': 'technique',
+                'technique': 'technique',
+                'p': 'technique',
+                'pr': 'technique',
+                'pro': 'technique',
+                'prob': 'technique',
+                'probl': 'technique',
+                'proble': 'technique',
+                'problem': 'technique',
+                'probleme': 'technique',
+                'problème': 'technique',
+                'probleme t': 'technique',
+                'problème t': 'technique',
+                'probleme te': 'technique',
+                'problème te': 'technique',
+                'probleme tec': 'technique',
+                'problème tec': 'technique',
+                'probleme tech': 'technique',
+                'problème tech': 'technique',
+                'probleme techn': 'technique',
+                'problème techn': 'technique',
+                'probleme techni': 'technique',
+                'problème techni': 'technique',
+                'probleme techniq': 'technique',
+                'problème techniq': 'technique',
+                'probleme techniqu': 'technique',
+                'problème techniqu': 'technique',
+                'probleme technique': 'technique',
+                'problème technique': 'technique',
+
+                # Facturation - toutes les combinaisons possibles
+                'f': 'facturation',
+                'fa': 'facturation',
+                'fac': 'facturation',
+                'fact': 'facturation',
+                'factu': 'facturation',
+                'factur': 'facturation',
+                'factura': 'facturation',
+                'facturat': 'facturation',
+                'facturati': 'facturation',
+                'facturatio': 'facturation',
+                'facturation': 'facturation',
+
+                # Autre - toutes les combinaisons possibles
+                'a': 'autre',
+                'au': 'autre',
+                'aut': 'autre',
+                'autr': 'autre',
+                'autre': 'autre'
+            }
+
+            
+            # Vérifier si le terme de recherche correspond à une catégorie
+            mapped_category = category_mapping.get(search_term)
             
             query = text("""
                 SELECT DISTINCT
@@ -139,8 +223,8 @@ def init_tickets_routes(app):
                     t.status,
                     t.created_by,
                     t.close_reason,
-                    CONCAT('user_', t.created_by) as username,
-                    COALESCE(DATE_FORMAT(t.created_at, '%d/%m/%Y %H:%i'), '') as created_at,
+                    u.username,
+                    DATE_FORMAT(t.created_at, '%d/%m/%Y %H:%i') as created_at,
                     COALESCE(
                         CASE 
                             WHEN t.closed_at IS NOT NULL THEN DATE_FORMAT(t.closed_at, '%d/%m/%Y %H:%i')
@@ -149,29 +233,47 @@ def init_tickets_routes(app):
                         ''
                     ) as closed_at
                 FROM tickets t
+                JOIN users u ON t.created_by = u.id
                 WHERE 
-                    LOWER(t.subject) LIKE :search 
-                    OR LOWER(t.description) LIKE :search 
-                    OR LOWER(t.category) LIKE :search
-                    OR LOWER(t.priority) LIKE :search
-                    OR LOWER(t.status) LIKE :search
-                    OR DATE_FORMAT(t.created_at, '%d/%m/%Y') LIKE :search
-                    OR DATE_FORMAT(t.created_at, '%d/%m') LIKE :search
-                    OR DATE_FORMAT(t.created_at, '%d') LIKE :search
-                    OR DATE_FORMAT(t.created_at, '%m/%Y') LIKE :search
-                    OR DATE_FORMAT(t.created_at, '%Y') LIKE :search
-                    OR DATE_FORMAT(t.created_at, '%d/%m/%Y %H:%i') LIKE :search
-                ORDER BY t.created_at DESC
+                    CASE
+                        WHEN :mapped_category IS NOT NULL THEN t.category = :mapped_category
+                        ELSE (
+                            LOWER(t.subject) LIKE :partial_search
+                            OR LOWER(t.description) LIKE :partial_search
+                            OR LOWER(t.priority) LIKE :partial_search
+                            OR LOWER(t.status) LIKE :partial_search
+                            OR LOWER(u.username) LIKE :partial_search
+                            OR DATE_FORMAT(t.created_at, '%d/%m/%Y') LIKE :partial_search
+                            OR DATE_FORMAT(t.created_at, '%d/%m') LIKE :partial_search
+                            OR DATE_FORMAT(t.created_at, '%d') LIKE :partial_search
+                            OR DATE_FORMAT(t.created_at, '%m/%Y') LIKE :partial_search
+                            OR DATE_FORMAT(t.created_at, '%Y') LIKE :partial_search
+                            OR DATE_FORMAT(t.created_at, '%d/%m/%Y %H:%i') LIKE :partial_search
+                            OR DATE_FORMAT(t.created_at, '%H:%i') LIKE :partial_search
+                        )
+                    END
+                ORDER BY 
+                    CASE 
+                        WHEN DATE_FORMAT(t.created_at, '%d/%m/%Y') = :exact_search THEN 1
+                        WHEN DATE_FORMAT(t.created_at, '%d/%m/%Y') LIKE :partial_search THEN 2
+                        WHEN LOWER(t.subject) = LOWER(:exact_search) THEN 3
+                        WHEN LOWER(t.subject) LIKE :partial_search THEN 4
+                        ELSE 5
+                    END,
+                    t.created_at DESC
             """)
             
             result = db.session.execute(query, {
-                'search': f"%{search_term}%"
+                'mapped_category': mapped_category,
+                'exact_search': search_term,
+                'partial_search': f"%{search_term}%"
             })
             
             tickets = [dict(zip(result.keys(), row)) for row in result]
             return jsonify(tickets)
             
         except Exception as e:
+            print(f"Erreur dans search_user_tickets: {str(e)}")
             return jsonify({'error': str(e)}), 500
 
 
@@ -401,10 +503,18 @@ def init_tickets_routes(app):
     @app.route('/api/helper/tickets/search', endpoint='helper_search_tickets')
     def search_helper_tickets():
         try:
-            search_term = request.args.get('q', '')
+            search_term = request.args.get('q', '').lower().strip()
+            
+            # Utiliser exactement le même mapping des catégories que dans search_user_tickets
+            category_mapping = {
+                # Copier tout le dictionnaire category_mapping de search_user_tickets
+                # [Le même mapping complet que dans search_user_tickets]
+            }
+            
+            mapped_category = category_mapping.get(search_term)
             
             query = text("""
-                SELECT 
+                SELECT DISTINCT
                     t.id,
                     t.subject,
                     t.description,
@@ -413,8 +523,8 @@ def init_tickets_routes(app):
                     t.status,
                     t.created_by,
                     t.close_reason,
-                    CONCAT('user_', t.created_by) as username,
-                    COALESCE(DATE_FORMAT(t.created_at, '%d/%m/%Y %H:%i'), '') as created_at,
+                    u.username,
+                    DATE_FORMAT(t.created_at, '%d/%m/%Y %H:%i') as created_at,
                     COALESCE(
                         CASE 
                             WHEN t.closed_at IS NOT NULL THEN DATE_FORMAT(t.closed_at, '%d/%m/%Y %H:%i')
@@ -423,21 +533,42 @@ def init_tickets_routes(app):
                         ''
                     ) as closed_at
                 FROM tickets t
+                JOIN users u ON t.created_by = u.id
                 WHERE 
-                    t.subject LIKE :search 
-                    OR t.description LIKE :search 
-                    OR t.category LIKE :search
-                    OR t.priority LIKE :search
-                    OR t.status LIKE :search
-                    OR CONCAT('user_', t.created_by) LIKE :search
-                    OR DATE_FORMAT(t.created_at, '%d/%m/%Y') LIKE :search
-                    OR DATE_FORMAT(t.created_at, '%d/%m/%Y %H:%i') LIKE :search
-                    OR DATE_FORMAT(t.created_at, '%d/%m') LIKE :search
-                    OR DATE_FORMAT(t.created_at, '%d') LIKE :search
-                ORDER BY t.created_at DESC
+                    CASE
+                        WHEN :mapped_category IS NOT NULL THEN t.category = :mapped_category
+                        ELSE (
+                            LOWER(t.subject) LIKE :partial_search
+                            OR LOWER(t.description) LIKE :partial_search
+                            OR LOWER(t.priority) LIKE :partial_search
+                            OR LOWER(t.status) LIKE :partial_search
+                            OR LOWER(u.username) LIKE :partial_search
+                            OR DATE_FORMAT(t.created_at, '%d/%m/%Y') LIKE :partial_search
+                            OR DATE_FORMAT(t.created_at, '%d/%m') LIKE :partial_search
+                            OR DATE_FORMAT(t.created_at, '%d') LIKE :partial_search
+                            OR DATE_FORMAT(t.created_at, '%m/%Y') LIKE :partial_search
+                            OR DATE_FORMAT(t.created_at, '%Y') LIKE :partial_search
+                            OR DATE_FORMAT(t.created_at, '%d/%m/%Y %H:%i') LIKE :partial_search
+                            OR DATE_FORMAT(t.created_at, '%H:%i') LIKE :partial_search
+                        )
+                    END
+                ORDER BY 
+                    CASE 
+                        WHEN DATE_FORMAT(t.created_at, '%d/%m/%Y') = :exact_search THEN 1
+                        WHEN DATE_FORMAT(t.created_at, '%d/%m/%Y') LIKE :partial_search THEN 2
+                        WHEN LOWER(t.subject) = LOWER(:exact_search) THEN 3
+                        WHEN LOWER(t.subject) LIKE :partial_search THEN 4
+                        ELSE 5
+                    END,
+                    t.created_at DESC
             """)
             
-            result = db.session.execute(query, {'search': f'%{search_term}%'})
+            result = db.session.execute(query, {
+                'mapped_category': mapped_category,
+                'exact_search': search_term,
+                'partial_search': f"%{search_term}%"
+            })
+            
             tickets = [dict(zip(result.keys(), row)) for row in result]
             return jsonify(tickets)
             
