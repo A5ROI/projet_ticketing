@@ -22,17 +22,41 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
+                {% if 'user_email' in session %}
                 <ul class="navbar-nav ms-auto">
+                    {% if session['user_role'] == 'Client' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="/user">
+                                <i class="fas fa-user"></i> Espace Utilisateur
+                            </a>
+                        </li>
+                    {% endif %}
+                    {% if session['user_role'] == 'Helper' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="/helper">
+                                <i class="fas fa-headset"></i> Espace Support
+                            </a>
+                        </li>
+                    {% endif %}
+                    {% if session['user_role'] == 'Admin' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="/user">
+                                <i class="fas fa-user"></i> Espace Utilisateur
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/helper">
+                                <i class="fas fa-headset"></i> Espace Support
+                            </a>
+                        </li>
+                    {% endif %}
                     <li class="nav-item">
-                        <a class="nav-link" href="/user">
-                            <i class="fas fa-user"></i> Espace Utilisateur
+                        <a class="nav-link" href="{{ url_for('logout') }}">
+                            <i class="fas fa-sign-out-alt"></i> Logout
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/helper">
-                            <i class="fas fa-headset"></i> Espace Support
-                        </a>
-                    </li>
+                    {% endif %}
+
                 </ul>
             </div>
         </div>

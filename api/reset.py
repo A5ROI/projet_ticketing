@@ -1,5 +1,5 @@
 from flask import jsonify
-from database import db
+from data.database import db
 from datetime import datetime
 import logging
 

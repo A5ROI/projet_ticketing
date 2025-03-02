@@ -2,7 +2,7 @@ from flask import jsonify, request
 from sqlalchemy import text
 from datetime import datetime
 import random
-from database import db
+from data.database import db
 import json
 
 def init_tickets_routes(app):

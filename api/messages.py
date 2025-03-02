@@ -1,6 +1,6 @@
 from flask import jsonify, request
 from sqlalchemy import text
-from database import db
+from data.database import db
 from datetime import datetime
 import json
 

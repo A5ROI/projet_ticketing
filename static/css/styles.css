@@ -6,6 +6,21 @@ body {
     flex-direction: column;
 }
 
+.form-group {
+    display: flex;
+    align-items: center;  /* Aligne verticalement l'input et le label */
+    margin-bottom: 15px;   /* Un peu d'espace entre les groupes */
+}
+
+.form-group label {
+    width: 200px;         /* Largeur fixe pour tous les labels */
+    margin-right: 10px;    /* Espacement entre le label et l'input */
+}
+
+.form-group input {
+    flex: 1;               /* L'input prend tout l'espace restant */
+}
+
 .navbar {
     box-shadow: 0 2px 4px rgba(0,0,0,.1);
 }
