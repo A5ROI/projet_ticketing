@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Enum, Text, DateTime
-from sqlalchemy.orm import sessionmaker, relationship, scoped_session, declarative_base, Session
+from sqlalchemy.orm import Session
 from sqlalchemy_utils import database_exists, create_database
 import smtplib
 from email.mime.text import MIMEText
@@ -16,22 +16,8 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from data import *
 from security import *
-
-
 # FastAPI app
 app = FastAPI()
-
-# Database setup for MySQL (phpMyAdmin)
-DATABASE_URL = "mysql+pymysql://elisee:1234@localhost/ticketing_system_db_1"
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
-
-if not database_exists(engine.url):
-    create_database(engine.url)
-SessionLocal = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
-Base = declarative_base()
-
-# Create tables if not exist
-Base.metadata.create_all(bind=engine)
 
 # Pydantic models
 class UserCreate(BaseModel):
@@ -47,12 +33,7 @@ class Token(BaseModel):
 # Dependency
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+
 
 # Utils
 def create_access_token(data: dict):
@@ -73,9 +54,16 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == login_data.email).first()
     if not user or not bcrypt.verify(login_data.password, user.password):
         raise HTTPException(status_code=400, detail="Invalid credentials")
-    access_token = create_access_token(data={"sub": user.email, "role": user.role})    
+    #access_token = create_access_token(data={"sub": str(user.id), "role": user.role})  
+    token_data = {"sub": str(user.id), "role": user.role}  # Vérifie bien que c'est l'ID et pas l'email
+    access_token = create_access_token(data=token_data)
+    print(f"🔍 Token généré avec: {token_data}")
+
+    
+   
+    print("Token généré:", access_token) 
     print("Email reçu:", login_data.email)
-    print("Mot de passe reçu:", login_data.password)
+    print("Mot de passe reçu:")
 
 
     return {"access_token": access_token, "token_type": "bearer"}
@@ -102,7 +90,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Erreur lors de la création de l'utilisateur : {str(e)}")
 
     # Créez le token JWT
-    access_token = create_access_token(data={"sub": db_user.email})
+    access_token = create_access_token(data={"sub": db_user.id})
 
     # Envoyez un e-mail de confirmation
     subject = "Bienvenue sur notre plateforme"

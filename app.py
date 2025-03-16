@@ -3,7 +3,7 @@ from functools import wraps #ELISEE Ajouté pour login_required
 import pymysql
 from data.database import db
 from passlib.hash import bcrypt  
-from api.tickets import init_tickets_routes
+from api.tickets import *
 from api.messages import init_messages_routes
 from api.reset import init_reset_routes
 from data.models import * 
@@ -49,7 +49,6 @@ def create_app():
 
    
     @app.route('/helper')
-    @login_required
     def helper_dashboard():
         return render_template('helper_dashboard.html')
     
@@ -84,12 +83,14 @@ def create_app():
                 print(f"Réponse JSON de FastAPI: {data}")  # Affiche la réponse JSON reçue
                 token = data["access_token"]
                 print(f"Token JWT: {token}")
-                #session['user_token'] = token  # Stocke le token JWT
+                session['user_token'] = token  # Stocke le token JWT
                 decoded_token = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
                 print(f"Decoded token: {decoded_token}")  # Affiche le contenu du token
                 session['user_role'] = decoded_token.get("role")  # Stocke le rôle
-                session['user_email'] = decoded_token.get("sub")  # Stocke l'email
-                print(session['user_role'])
+                session['user_id'] = decoded_token.get("sub")  # Stocke l'email
+                print("Token stocké en session:", session.get('user_token'))
+                print("ID en session:", session.get('user_id'))
+                print("Session actuelle :", session)
 
 
                 flash("Connexion réussie!", "success")
@@ -97,6 +98,10 @@ def create_app():
             else:
                 print("Identifiants invalides")
                 flash("Identifiants invalides", "danger")
+            
+            
+
+            
         return render_template("login.html")
 
     

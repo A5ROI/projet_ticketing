@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
         currentUserId = savedUserId;
     }
     
+    
     showSection('tickets');
     loadUserTickets();
     setupEventListeners();
@@ -74,6 +75,7 @@ function showSection(sectionId) {
 // Gestion des tickets
 async function submitNewTicket(event) {
     event.preventDefault();
+    const token = localStorage.getItem('token')
     
     const formData = {
         subject: document.getElementById('subject').value.trim(),
@@ -85,9 +87,13 @@ async function submitNewTicket(event) {
     try {
         const response = await fetch('/api/tickets', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+             },
             body: JSON.stringify(formData)
         });
+        console.log(localStorage.getItem('token'));
 
         const result = await response.json();
         
@@ -109,6 +115,26 @@ async function submitNewTicket(event) {
     }
 }
 
+async function loadTickets() {
+    const token = localStorage.getItem('user_token');  // Récupérer le token depuis le stockage
+    console.log("🔍 Token récupéré :", token); 
+    if (!token) {
+        console.error("Aucun token trouvé!");
+        return;
+    }
+
+    const response = await fetch('/api/tickets', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${token}`,  // Envoi du token dans le header
+            'Content-Type': 'application/json'
+        }
+    });
+
+    const data = await response.json();
+    console.log("Tickets reçus :", data);
+}
+
 async function loadUserTickets() {
     try {
         const userId = getCurrentUserId();
@@ -116,7 +142,7 @@ async function loadUserTickets() {
             return; // Sort de la fonction si pas d'ID
         }
         
-        const response = await fetch(`/api/tickets/${userId}`);
+        const response = await fetch(`/api/tickets`);
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -195,7 +221,7 @@ function displayTickets(tickets) {
 
         const row = tbody.insertRow();
         row.innerHTML = `
-            <td>${ticket.username || 'Anonyme'}</td>
+            <td>${ticket.id || 'Anonyme'}</td>
             <td>${getStatusIcon(ticket.status)}${ticket.status}</td>
             <td>${ticket.subject}</td>
             <td>${getCategoryLabel(ticket.category)}</td>
@@ -296,12 +322,12 @@ async function loadChatHistory(ticketId) {
 async function openChat(ticketId) {
     try {
         // Charger les détails du ticket pour obtenir le username
-        const response = await fetch(`/api/tickets/${ticketId}/details`);
+        const response = await fetch(`/api/tickets/${ticket.id}/details`);
         const ticket = await response.json();
         
         currentChatTicketId = ticketId;
         document.getElementById('chatWidget').style.display = 'block';
-        document.getElementById('chatTicketId').textContent = `Ticket de ${ticket.username}`;
+        document.getElementById('chatTicketId').textContent = `Ticket de ${ticket.id}`;
         loadChatHistory(ticketId);
     } catch (error) {
         console.error('Erreur:', error);
@@ -322,7 +348,7 @@ function closeChat() {
 // Fonctions utilitaires
 function getCurrentUserId() {
     // Récupérer l'ID depuis le localStorage
-    currentUserId = localStorage.getItem('currentUserId');
+    currentUserId = localStorage.getItem('sub');
     // Si pas d'ID, retourner une valeur par défaut (par exemple 1)
     return currentUserId || 1;
 }
@@ -423,7 +449,7 @@ function setupNotifications() {
 async function viewTicket(ticketId) {
     try {
         // Charger les détails du ticket
-        const ticketResponse = await fetch(`/api/tickets/${ticketId}/details`);
+        const ticketResponse = await fetch(`/api/tickets/${ticketId}`);
         if (!ticketResponse.ok) {
             throw new Error('Erreur lors de la récupération des détails du ticket');
         }
