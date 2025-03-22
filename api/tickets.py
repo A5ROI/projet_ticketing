@@ -56,16 +56,18 @@ def init_tickets_routes(app):
     @app.route('/api/tickets', methods=['GET'])
     def get_all_tickets():
         try:
-            token = session.get('user_token')  # Vérifie si le token est stocké dans les cookies
-            print(token)
+            # 🔥 Récupérer le token de l'en-tête Authorization
+            print(f"🔍 Cookies reçus : {request.cookies}")  # Debug
+        
+        # 🔥 Récupérer le token depuis la session et non le header
+            token = session.get('user_token')
+            print(f"🔍 Token récupéré depuis session : {token}")  # Debug
+
             if not token:
-                return jsonify({'error': 'Unauthorized: Token not found'}), 401  # Message plus clair
+                return jsonify({'error': 'Unauthorized: Token not found in session'}), 40
 
-            print(f"🔍 Token récupéré : {token}")  # Debugging
-
-            user = get_current_user(token)  # Vérifie l'utilisateur avec le token
-
-            # Log pour voir si l'utilisateur est récupéré correctement
+            # Vérifier et décoder le token
+            user = get_current_user(token)
             print(f"👤 Utilisateur connecté : {user}")
 
             # Récupération des tickets selon le rôle
@@ -73,8 +75,8 @@ def init_tickets_routes(app):
                 tickets = Ticket.query.filter_by(created_by=user['id']).all()
             elif user['role'] == 'Helper':
                 print("🔍 Recherche des tickets de la catégorie...")
-                tickets = Ticket.query.filter(Ticket.category_id == user['category_id']).all() 
-                print(f"✅ Tickets trouvés : {len(tickets)}") 
+                tickets = Ticket.query.filter(Ticket.category_id == user['category_id']).all()
+                print(f"✅ Tickets trouvés : {len(tickets)}")
             else:
                 tickets = Ticket.query.all()
 
@@ -86,6 +88,7 @@ def init_tickets_routes(app):
                 "status": ticket.status,
                 "created_at": ticket.created_at.strftime("%d/%m/%Y %H:%M")
             } for ticket in tickets]
+            print(tickets)
 
             return jsonify(tickets_list), 200
 

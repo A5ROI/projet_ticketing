@@ -1,4 +1,5 @@
-from flask import Flask, render_template, redirect, url_for, request, session, flash  
+from flask import Flask, render_template, redirect, url_for, request, session, flash
+from flask_migrate import Migrate
 from functools import wraps #ELISEE Ajouté pour login_required
 import pymysql
 from data.database import db
@@ -25,9 +26,7 @@ def create_app():
     # Initialiser la base de données
     db.init_app(app)
 
-        # Création des tables si elles n'existent pas
-    with app.app_context():
-        db.create_all()
+    Migrate(app, db)  # Ajout de Flask-Migrate
 
     # Routes principales
     @app.route('/')
@@ -76,25 +75,32 @@ def create_app():
             response = requests.post(f"{FASTAPI_URL}/login", json={"email": email, "password": password})
             print("Réponse FastAPI:", response.status_code)  # Affiche le code de statut HTTP
             print("Réponse du serveur:", response.text)  #
+            session.clear()
 
 
             if response.status_code == 200:
                 data = response.json()
-                print(f"Réponse JSON de FastAPI: {data}")  # Affiche la réponse JSON reçue
                 token = data["access_token"]
-                print(f"Token JWT: {token}")
-                session['user_token'] = token  # Stocke le token JWT
-                decoded_token = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-                print(f"Decoded token: {decoded_token}")  # Affiche le contenu du token
-                session['user_role'] = decoded_token.get("role")  # Stocke le rôle
-                session['user_id'] = decoded_token.get("sub")  # Stocke l'email
-                print("Token stocké en session:", session.get('user_token'))
-                print("ID en session:", session.get('user_id'))
-                print("Session actuelle :", session)
+                session['user_token'] = token  # ✅ Stocke le token dans la session
+                headers = {"Authorization": f"Bearer {token}"}
+                user_response = requests.get(f"{FASTAPI_URL}/me", headers=headers)
+                print(f"Réponse JSON de FastAPI: {data}")  # Affiche la réponse JSON reçue
 
+                if user_response.status_code == 200:
+                    user_data = user_response.json()
+                    session['user_id'] = user_data.get("id")  
+                    session['user_role'] = user_data.get("role")
 
-                flash("Connexion réussie!", "success")
-                return redirect(url_for("user_dashboard"))
+                    print("Token stocké en session:", session.get('user_token'))
+                    print("ID utilisateur en session:", session.get('user_id'))
+                    print("Rôle utilisateur en session:", session.get('user_role'))
+
+                
+
+                    flash("Connexion réussie!", "success")
+                    return jsonify({"access_token": token,"user_id":session['user_id'], "redirect": "/user"})
+                else:
+                    flash("Erreur lors de la récupération des informations utilisateur", "danger")
             else:
                 print("Identifiants invalides")
                 flash("Identifiants invalides", "danger")
@@ -105,6 +111,15 @@ def create_app():
         return render_template("login.html")
 
     
+
+
+    @app.route('/api/get_token', methods=['GET'])
+    def get_token():
+        token = session.get('user_token')
+        if not token:
+            return jsonify({"error": "Aucun token trouvé"}), 401
+        return jsonify({"token": token})
+
     @app.route('/register', methods=['POST', 'GET'])
     def register():
         if request.method == "POST":

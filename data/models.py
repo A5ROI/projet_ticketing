@@ -37,3 +37,19 @@ class Ticket(db.Model):
     category_id = db.Column(db.Integer, db.ForeignKey('category.id'), nullable=False)
     creator = db.relationship('User', back_populates='tickets')
     category = db.relationship('Category', back_populates='tickets')
+
+class Message(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('ticket.id'), nullable=False)
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    sender_type = db.Column(db.String(50), nullable=False)  # 'user' ou 'helper'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relations
+    ticket = db.relationship('Ticket', back_populates='messages')
+    sender = db.relationship('User', back_populates='messages')
+
+# Ajout de la relation dans Ticket et User
+Ticket.messages = db.relationship('Message', back_populates='ticket', cascade="all, delete-orphan")
+User.messages = db.relationship('Message', back_populates='sender', cascade="all, delete-orphan")

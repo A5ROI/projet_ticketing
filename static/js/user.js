@@ -3,20 +3,23 @@ let currentTicketId = null;
 let currentChatTicketId = null;
 let currentUserId = null;
 let typingTimeout = null;
-
 // Initialisation
 document.addEventListener('DOMContentLoaded', function() {
     // Récupérer l'ID utilisateur du localStorage s'il existe
-    const savedUserId = localStorage.getItem('currentUserId');
+    const savedUserId = sessionStorage.getItem('user_id');
     if (savedUserId) {
-        currentUserId = savedUserId;
+        currentUserId = localStorage.setItem("currentUserId",savedUserId);
     }
     
     
     showSection('tickets');
     loadUserTickets();
     setupEventListeners();
+    window.openChat = openChat;
+    window.closeChat = closeChat;
+    window.viewTicket = viewTicket;
 });
+
 
 // Gestion des images
 function handleImagePreview(event) {
@@ -74,7 +77,7 @@ function showSection(sectionId) {
 // Gestion des tickets
 async function submitNewTicket(event) {
     event.preventDefault();
-    const token = localStorage.getItem('token')
+    const token = sessionStorage.getItem('user_token')
     
     const formData = {
         subject: document.getElementById('subject').value.trim(),
@@ -92,13 +95,13 @@ async function submitNewTicket(event) {
              },
             body: JSON.stringify(formData)
         });
-        console.log(localStorage.getItem('token'));
+        console.log(sessionStorage.getItem('user_token'));
 
         const result = await response.json();
         
         if (result.success) {
             // Stocker l'ID utilisateur dans le localStorage
-            currentUserId = result.user_id;
+            currentUserId = sessionStorage.getItem('user_id');
             localStorage.setItem('currentUserId', currentUserId);
             
             showNotification('Ticket créé avec succès!', 'success');
@@ -115,7 +118,7 @@ async function submitNewTicket(event) {
 }
 
 async function loadTickets() {
-    const token = localStorage.getItem('user_token');  // Récupérer le token depuis le stockage
+    const token = sessionStorage.getItem('user_token');  // Récupérer le token depuis le stockage
     console.log("🔍 Token récupéré :", token); 
     if (!token) {
         console.error("Aucun token trouvé!");
@@ -134,14 +137,42 @@ async function loadTickets() {
     console.log("Tickets reçus :", data);
 }
 
+async function getTokenFromSession() {
+    try {
+        const response = await fetch('/api/get_token');
+        const data = await response.json();
+
+        if (response.ok) {
+            console.log("🔑 Token récupéré :", data.token);
+            return data.token;
+        } else {
+            console.error("🚨 Erreur lors de la récupération du token :", data.error);
+            return null;
+        }
+    } catch (error) {
+        console.error("🚨 Erreur réseau :", error);
+        return null;
+    }
+}
+
+
 async function loadUserTickets() {
     try {
+        const token = sessionStorage.getItem("user_token") || localStorage.getItem("user_token");
+        console.log("🔍 Token récupéré :", token);
+        console.log(document.cookie);
         const userId = getCurrentUserId();
         if (!userId) {
             return; // Sort de la fonction si pas d'ID
         }
         
-        const response = await fetch(`/api/tickets`);
+        const response = await fetch(`/api/tickets`, {
+            method: "GET",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json"
+            }
+        });
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -416,6 +447,28 @@ async function sendMessage(event) {
     }
 }
 
+function extractUserIdFromToken() {
+    const token = sessionStorage.getItem('user_token'); 
+    if (!token) {
+        console.error("Aucun token trouvé dans sessionlStorage !");
+        return null;
+    }
+
+    try {
+        const decoded = jwt_decode(token);  // Décodage du token
+        console.log("Token décodé :", decoded);
+        
+        const userId = decoded.sub;  // Récupère l'ID de l'utilisateur
+        localStorageStorage.setItem('user_id', userId); // Stocke l'ID dans localStorage
+
+        return userId;
+    } catch (error) {
+        console.error("Erreur lors du décodage du token :", error);
+        return null;
+    }
+}
+
+
 async function loadChatHistory(ticketId) {
     try {
         const response = await fetch(`/api/messages/${ticketId}`);
@@ -425,7 +478,7 @@ async function loadChatHistory(ticketId) {
         
         const chatMessages = document.getElementById('chatMessages');
         chatMessages.innerHTML = '';
-
+    
         if (!messages || messages.length === 0) {
             chatMessages.innerHTML = `
                 <div class="text-center p-3">
@@ -435,19 +488,27 @@ async function loadChatHistory(ticketId) {
             `;
             return;
         }
-
+    
+        const userId = Number(sessionStorage.getItem('user_id')) || extractUserIdFromToken();
+        console.log("ID utilisateur connecté :", userId);
+    
         messages.forEach(msg => {
+            const isCurrentUser = msg.sender_id == userId; // Vérifie si c'est l'utilisateur connecté
             const messageDiv = document.createElement('div');
-            messageDiv.className = `chat-message message-${msg.sender_type}`;
+            console.log(msg.sender_id, msg.sender_type);
+    
+            // Ajoute des classes conditionnelles pour aligner les messages
+            messageDiv.className = `chat-message ${isCurrentUser ? 'message-right' : 'message-left'}`;
             messageDiv.innerHTML = `
                 <div class="message-content">${msg.content.replace(/\n/g, '<br>')}</div>
                 <small class="message-time">${msg.created_at}</small>
             `;
+    
             chatMessages.appendChild(messageDiv);
         });
         
         chatMessages.scrollTop = chatMessages.scrollHeight;
-        
+    
     } catch (error) {
         console.error('Erreur dans loadChatHistory:', error);
         showNotification('Erreur lors du chargement des messages', 'danger');
@@ -457,7 +518,7 @@ async function loadChatHistory(ticketId) {
 async function openChat(ticketId) {
     try {
         // Charger les détails du ticket pour obtenir le username
-        const response = await fetch(`/api/tickets/${ticket.id}/details`);
+        const response = await fetch(`/api/messages/${ticketId}`);
         const ticket = await response.json();
         
         currentChatTicketId = ticketId;
@@ -486,8 +547,8 @@ function closeChat() {
 
 // Fonctions utilitaires
 function getCurrentUserId() {
-    // Récupérer l'ID depuis le localStorage
-    currentUserId = localStorage.getItem('sub');
+    // Récupérer l'ID 
+    currentUserId = sessionStorage.getItem('user_id');
     // Si pas d'ID, retourner une valeur par défaut (par exemple 1)
     return currentUserId || 1;
 }
@@ -581,7 +642,7 @@ function setupEventListeners() {
 }
 
 let checkMessagesInterval;
-
+/*
 function setupMessageChecking() {
     if (currentChatTicketId) {
         // Arrêter l'intervalle précédent s'il existe
@@ -606,7 +667,7 @@ function setupMessageChecking() {
         }, 5000);
     }
 }
-
+*/
 
 async function viewTicket(ticketId) {
     try {

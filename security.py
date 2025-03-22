@@ -1,7 +1,7 @@
 from passlib.hash import bcrypt 
 from datetime import datetime, timedelta
 import jwt
-from flask import request
+from flask import request, session, jsonify
 from fastapi import Depends,HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from werkzeug.exceptions import Unauthorized
@@ -29,32 +29,33 @@ def create_access_token(data: dict):
 
 
 def get_current_user(token: str):
-    print(f"🛑 Token reçu : {token}")  # Ajoute ça pour voir si le token est bien reçu
-
+    token = request.headers.get("Authorization")  # 🔹 Récupère le token depuis le header
     if not token:
-        raise Unauthorized("Missing token")
-    
+        return jsonify({"error": "Missing token"}), 401
+
     try:
+        token = token.split(" ")[1]  # 🔹 Supprime "Bearer " du token
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        print(f"🔍 Token décodé : {payload}")  # Debugging
         
         user_id = payload.get("sub")
         role = payload.get("role")
 
-        user = User.query.filter_by(id=user_id).first()
-
         if not user_id or not role:
-            raise Unauthorized("Invalid token: Missing 'sub' or 'role'")
+            return jsonify({"error": "Invalid token"}), 401
         
+        # 🔹 Stocke dans session (utile si tu utilises Flask avec des templates HTML)
+        session['user_token'] = token
+        session['user_role'] = role
+        session['user_id'] = user_id
+
         return {
-            "id": user.id,
-            "role": user.role,
-            "category_id": user.category_id  # Vérifie bien que la catégorie est récupérée
+            "id": user_id,
+            "role": role,
+            "session_user_id": session.get('user_id'),  # Vérifie si c'est stocké
+            "session_user_role": session.get('user_role')
         }
     
     except jwt.ExpiredSignatureError:
-        raise Unauthorized("Token expired")
+        return jsonify({"error": "Token expired"}), 401
     except jwt.InvalidTokenError:
-        raise Unauthorized("Invalid token")
-
-
+        return jsonify({"error": "Invalid token"}), 401

@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Enum, Text, DateTime
 from sqlalchemy.orm import Session
@@ -18,6 +19,14 @@ from data import *
 from security import *
 # FastAPI app
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 🔥 Prova prima con "*", poi restringi a ["http://localhost:5000"]
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Pydantic models
 class UserCreate(BaseModel):
@@ -102,3 +111,29 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
     return {"access_token": access_token, "token_type": "bearer"}
 
+@app.get("/me")
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    try:
+        # Décoder le token JWT
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        role = payload.get("role")
+
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid token: No user ID")
+
+        # Rechercher l'utilisateur dans la base de données
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        return {
+            "id": user.id,
+            "role": user.role,
+            "category_id": user.category_id  # Si besoin
+        }
+
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
