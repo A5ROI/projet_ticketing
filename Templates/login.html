@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Connexion - Système de Tickets{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-user-lock fa-4x mb-3 text-primary"></i>
+                    <h3 class="card-title">Connexion</h3>
+                    <p class="card-text">Accédez à votre espace en entrant vos identifiants.</p>
+                    
+                    <form method="POST" action="/login" id="loginForm">
+                        <div class="form-group">
+                            <label for="email">Adresse Email</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        
+                        <div class="form-group mt-3">
+                            <label for="password">Mot de passe</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg mt-4">
+                            <i class="fas fa-sign-in-alt"></i> Se connecter
+                        </button>
+                    </form>
+
+                    <p class="mt-3">
+                        Pas encore de compte ? <a href="/register">Inscrivez-vous</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/login.js') }}"></script>
+{% endblock %}

@@ -1,5 +1,45 @@
 /* static/css/user.css */
 
+input#email.form-control{
+    margin-left: 20px;
+    /* display: block; */
+    /* width: 100%; */
+    padding: .375rem .75rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #212529;
+    background-color: #fff;
+    background-clip: padding-box;
+    border: 1px solid #ced4da;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    border-radius: .25rem;
+    transition: border-color .15sease-in-out, box-shadow .15sease-in-out;
+
+}
+
+.chat-message {
+    padding: 10px;
+    border-radius: 8px;
+    margin: 5px;
+    max-width: 70%;
+    word-wrap: break-word;
+}
+
+.message-right {
+    background-color: #dcf8c6;
+    align-self: flex-end;
+    text-align: right;
+}
+
+.message-left {
+    background-color: #f1f0f0;
+    align-self: flex-start;
+    text-align: left;
+}
+
 /* Styles spécifiques à la page utilisateur */
 .user-container {
     margin-top: 20px;

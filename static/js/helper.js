@@ -46,13 +46,36 @@ function setupHelperEventListeners() {
 // Fonctions de chargement des tickets (appels API)
 async function loadAllTickets() {
     try {
-        const response = await fetch('/api/helper/tickets');
+        const token = localStorage.getItem('user_token');  // Récupération du token
+        console.log("🔍 Token récupéré :", token);
+        console.log("🔍 Token dans localStorage :", localStorage.getItem('user_token'));
+        console.log("🔍 Token dans cookies :", document.cookie);
+
+        if (!token) {
+            console.error("🔴 Aucun token trouvé !");
+            return;
+        }
+
+        const response = await fetch('/api/tickets', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,  // Passer le token
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Erreur lors du chargement des tickets');
+        }
+
         const tickets = await response.json();
-        updateTicketsTable(tickets);
+        updateTicketsTable(tickets);  // Affichage des tickets dans la table
     } catch (error) {
+        console.error("❌ Erreur :", error);
         showNotification('Erreur lors du chargement des tickets', 'danger');
     }
 }
+
 
 async function loadTicketsByStatus(status) {
     try {
@@ -499,6 +522,14 @@ function formatDate(dateString) {
         return 'Non spécifiée';
     }
     return dateString; // Utiliser directement le format du backend
+}
+
+// Fonctions utilitaires
+function getCurrentUserId() {
+    // Récupérer l'ID depuis le localStorage
+    currentUserId = localStorage.getItem('sub');
+    // Si pas d'ID, retourner une valeur par défaut (par exemple 1)
+    return currentUserId || 1;
 }
 
 function formatCategory(category) {

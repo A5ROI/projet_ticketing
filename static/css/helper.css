@@ -102,18 +102,26 @@
     border-radius: 1rem;
 }
 
-.message-user {
-    float: left;
-    background-color: #e9ecef;
-    border-radius: 1rem 1rem 1rem 0;
+.chat-message {
+    padding: 10px;
+    border-radius: 8px;
+    margin: 5px;
+    max-width: 70%;
+    word-wrap: break-word;
 }
 
-.message-helper {
-    float: right;
-    background-color: #007bff;
-    color: white;
-    border-radius: 1rem 1rem 0 1rem;
+.message-right {
+    background-color: #dcf8c6;
+    align-self: flex-end;
+    text-align: right;
 }
+
+.message-left {
+    background-color: #f1f0f0;
+    align-self: flex-start;
+    text-align: left;
+}
+
 
 .message-time {
     display: block;

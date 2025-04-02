@@ -15,24 +15,48 @@
     {% block header %}{% endblock %}
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="/">
+            <a class="navbar-brand" href="{{ url_for('user_dashboard') if session.get('user_token') else url_for('login') }}ù">
                 <i class="fas fa-ticket-alt"></i> Système de Tickets
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
+                {% if 'user_id' in session %}
                 <ul class="navbar-nav ms-auto">
+                    {% if session['user_role'] == 'Client' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="/user">
+                                <i class="fas fa-user"></i> Espace Utilisateur
+                            </a>
+                        </li>
+                    {% endif %}
+                    {% if session['user_role'] == 'Helper' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="/helper">
+                                <i class="fas fa-headset"></i> Espace Support
+                            </a>
+                        </li>
+                    {% endif %}
+                    {% if session['user_role'] == 'Admin' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="/user">
+                                <i class="fas fa-user"></i> Espace Utilisateur
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/helper">
+                                <i class="fas fa-headset"></i> Espace Support
+                            </a>
+                        </li>
+                    {% endif %}
                     <li class="nav-item">
-                        <a class="nav-link" href="/user">
-                            <i class="fas fa-user"></i> Espace Utilisateur
+                        <a class="nav-link" href="{{ url_for('logout') }}">
+                            <i class="fas fa-sign-out-alt"></i> Logout
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/helper">
-                            <i class="fas fa-headset"></i> Espace Support
-                        </a>
-                    </li>
+                    {% endif %}
+
                 </ul>
             </div>
         </div>
@@ -52,6 +76,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Ajout du JS SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        
     {% block extra_js %}{% endblock %}
 </body>
 </html>

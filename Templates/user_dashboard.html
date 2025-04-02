@@ -94,10 +94,10 @@
                             <label for="category" class="form-label">Catégorie</label>
                             <select class="form-select" id="category" required>
                                 <option value="">Sélectionner une catégorie</option>
-                                <option value="technique">Problème technique</option>
-                                <option value="compte">Gestion de compte</option>
-                                <option value="facturation">Facturation</option>
-                                <option value="autre">Autre</option>
+                                <option value="1">Problème technique</option>
+                                <option value="2">Gestion de compte</option>
+                                <option value="3">Facturation</option>
+                                <option value="4">Autre</option>
                             </select>
                         </div>
                         <div class="mb-3">
@@ -187,5 +187,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/user.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/user.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script>
 {% endblock %}

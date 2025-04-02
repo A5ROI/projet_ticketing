@@ -1,6 +1,6 @@
 from flask import jsonify, request
 from sqlalchemy import text
-from database import db
+from data.database import db
 from datetime import datetime
 import json
 
@@ -10,7 +10,7 @@ def init_messages_routes(app):
         try:
             data = request.json
             query = text("""
-                INSERT INTO messages (ticket_id, sender_id, content, sender_type, created_at)
+                INSERT INTO message (ticket_id, sender_id, content, sender_type, created_at)
                 VALUES (:ticket_id, :sender_id, :content, 'user', NOW())
             """)
             
@@ -22,7 +22,7 @@ def init_messages_routes(app):
             
             # Mettre à jour le statut du ticket
             status_query = text("""
-                UPDATE tickets 
+                UPDATE ticket 
                 SET status = 'En attente' 
                 WHERE id = :ticket_id
             """)
@@ -42,7 +42,7 @@ def init_messages_routes(app):
             
             # Insérer le message avec l'ID du helper_admin existant
             query = text("""
-                INSERT INTO messages (ticket_id, sender_id, content, sender_type, created_at)
+                INSERT INTO message (ticket_id, sender_id, content, sender_type, created_at)
                 VALUES (:ticket_id, 1, :content, 'helper', NOW())
             """)
             
@@ -53,7 +53,7 @@ def init_messages_routes(app):
             
             # Mettre à jour le statut du ticket
             status_query = text("""
-                UPDATE tickets 
+                UPDATE ticket 
                 SET status = 'En cours' 
                 WHERE id = :ticket_id
             """)
@@ -89,10 +89,11 @@ def init_messages_routes(app):
                     m.id,
                     m.content,
                     m.sender_type,
+                    m.sender_id,
                     u.username as sender_name,
                     DATE_FORMAT(m.created_at, '%d/%m/%Y %H:%i') as created_at
-                FROM messages m
-                LEFT JOIN users u ON m.sender_id = u.id
+                FROM message m
+                LEFT JOIN user u ON m.sender_id = u.id
                 WHERE m.ticket_id = :ticket_id
                 ORDER BY m.created_at ASC
             """)
@@ -105,6 +106,7 @@ def init_messages_routes(app):
                     'id': row.id,
                     'content': row.content,
                     'sender_type': row.sender_type,
+                    'sender_id': row.sender_id,
                     'sender_name': row.sender_name or 'helper_admin',
                     'created_at': row.created_at,
                     'isAdmin': row.sender_type == 'helper'
