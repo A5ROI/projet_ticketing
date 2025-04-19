@@ -15,7 +15,7 @@
     {% block header %}{% endblock %}
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="{{ url_for('user_dashboard') if session.get('user_token') else url_for('login') }}ù">
+            <a class="navbar-brand" href="{{ url_for('user_dashboard') if session.get('user_token') else url_for('login') }}">
                 <i class="fas fa-ticket-alt"></i> Système de Tickets
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
