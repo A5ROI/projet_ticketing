@@ -107,13 +107,40 @@ def create_app():
                 print("Identifiants invalides")
                 flash("Identifiants invalides", "danger")
                 return jsonify({"error": "Identifiants invalides"}), 401
-            
-            
-
-            
+      
         return render_template("login.html")
 
-    
+
+    @app.route('/my_profile', methods=['GET', 'POST'])
+    def my_profile():
+        user_id = session.get('user_id')
+        if not user_id:
+            flash("Vous devez être connecté pour accéder à votre profil.", "warning")
+            return redirect(url_for('login'))
+
+        user = User.query.get(user_id)
+
+        if request.method == 'POST':
+            username = request.form['username']
+            email = request.form['email']
+            new_password = request.form['password']
+            confirm_password = request.form['confirm_password']
+
+            user.username = username
+            user.email = email
+
+            if new_password:
+                if new_password != confirm_password:
+                    flash("Les mots de passe ne correspondent pas", "danger")
+                    return redirect(url_for('mon_profil'))
+                user.password = generate_password_hash(new_password)
+
+            db.session.commit()
+            flash("Profil mis à jour avec succès", "success")
+            return redirect(url_for('mon_profil'))
+
+        return render_template("my_profile.html", user=user)
+
 
 
     @app.route('/api/get_token', methods=['GET'])

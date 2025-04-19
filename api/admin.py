@@ -38,7 +38,7 @@ def register_routes(app):
         if user.role == 'Client':
             tickets = Ticket.query.filter_by(created_by=user.id).all()
         elif user.role == 'Helper':
-            tickets = Ticket.query.filter_by(created_by=user.id).all()
+            tickets = Ticket.query.filter_by(category_id=user.category_id).all()
         else:
             tickets = []
 
