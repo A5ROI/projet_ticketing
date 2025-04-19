@@ -9,8 +9,9 @@ from api.messages import init_messages_routes
 from api.reset import init_reset_routes
 from data.models import * 
 from security import *
-from data.email_notifications import send_email
+from data.email_notifications import *
 import requests
+from api.admin import *
 
 
 FASTAPI_URL = "http://127.0.0.1:8000"  # Port de FastAPI
@@ -101,9 +102,11 @@ def create_app():
                     return jsonify({"access_token": token,"user_id":session['user_id'], "redirect": "/user"})
                 else:
                     flash("Erreur lors de la récupération des informations utilisateur", "danger")
+                    return jsonify({"error": "Erreur récupération utilisateur"}), 500
             else:
                 print("Identifiants invalides")
                 flash("Identifiants invalides", "danger")
+                return jsonify({"error": "Identifiants invalides"}), 401
             
             
 
@@ -155,6 +158,7 @@ def create_app():
     init_tickets_routes(app)
     init_messages_routes(app)
     init_reset_routes(app)
+    register_routes(app)
 
     return app
 

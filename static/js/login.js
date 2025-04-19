@@ -48,3 +48,18 @@ function login(email, password) {
     })
     .catch(error => console.error("❌ Erreur lors de la connexion :", error));
 }
+
+function redirectToLogin(event) {
+    event.preventDefault();
+    fetch("/update_password", {
+        method: "POST",
+        body: new FormData(event.target)
+    }).then(response => response.json()).then(data => {
+        if (data.message) {
+            alert("Mot de passe mis à jour avec succès. Redirection vers la page de connexion.");
+            window.location.href = "/login";
+        } else {
+            alert("Erreur : " + data.error);
+        }
+    }).catch(error => alert("Erreur serveur"));
+}
