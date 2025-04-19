@@ -39,6 +39,16 @@
                         </li>
                     {% endif %}
                     {% if session['user_role'] == 'Admin' %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userManagementDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Gestion Utilisateur
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="userManagementDropdown">
+                            <li><a class="dropdown-item" href="/users">Tous les utilisateurs</a></li>
+                            <li><a class="dropdown-item" href="/create-helper">Créer un utilisateur</a></li>
+                        </ul>
+                    </li>
+                    
                         <li class="nav-item">
                             <a class="nav-link" href="/user">
                                 <i class="fas fa-user"></i> Espace Utilisateur
@@ -61,6 +71,17 @@
             </div>
         </div>
     </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }} alert-dismissible fade show mt-3" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
 
     {% block content %}{% endblock %}
 

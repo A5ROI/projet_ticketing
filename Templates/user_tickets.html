@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Tickets de {{ user.username }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3>Tickets de {{ user.username }} - {{ user.role }}</h3>
+
+    {% if tickets %}
+        <table class="table table-striped mt-3">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Titre</th>
+                    <th>Statut</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ticket in tickets %}
+                <tr>
+                    <td>{{ ticket.id }}</td>
+                    <td>{{ ticket.subject }}</td>
+                    <td>{{ ticket.status }}</td>
+                    <td>{{ ticket.created_at.strftime('%d/%m/%Y') }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#ticketModal{{ ticket.id }}">
+                            Détails
+                          </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% for ticket in tickets %}
+            <div class="modal fade" id="ticketModal{{ ticket.id }}" tabindex="-1" aria-labelledby="ticketModalLabel{{ ticket.id }}" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="ticketModalLabel{{ ticket.id }}">Détails du Ticket</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Titre :</strong> {{ ticket.subject }}</p>
+                    <p><strong>Description :</strong> {{ ticket.description }}</p>
+                    <p><strong>Status :</strong> {{ ticket.status }}</p>
+                    <p><strong>Créé le :</strong> {{ ticket.created_at.strftime('%d/%m/%Y %H:%M') }}</p>
+                    {% if ticket.helper %}
+                    <p><strong>Assigné à :</strong> {{ ticket.helper.username }}</p>
+                    {% endif %}
+                </div>
+                </div>
+            </div>
+            </div>
+        {% endfor %}
+
+        
+    {% else %}
+        <p>Aucun ticket trouvé.</p>
+    {% endif %}
+</div>
+{% endblock %}

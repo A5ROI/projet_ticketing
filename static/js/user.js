@@ -191,6 +191,7 @@ async function loadUserTickets() {
     }
 }
 
+/*
 async function filterTicketsByStatus(status) {
     try {
         const userId = getCurrentUserId();
@@ -201,6 +202,7 @@ async function filterTicketsByStatus(status) {
         showNotification('Erreur lors du filtrage des tickets', 'danger');
     }
 }
+
 
 async function searchTickets(query) {
     // Mapping des catégories pour la recherche progressive
@@ -352,7 +354,7 @@ async function searchTickets(query) {
         showNotification('Erreur lors de la recherche', 'danger');
     }
 }
-
+*/
 
 function displayTickets(tickets) {
     const tbody = document.querySelector('#userTicketsTable tbody');
@@ -525,7 +527,7 @@ async function openChat(ticketId) {
         document.getElementById('chatWidget').style.display = 'block';
         document.getElementById('chatTicketId').textContent = `Ticket de ${ticket.id}`;
         loadChatHistory(ticketId);
-        setupMessageChecking();
+        //setupMessageChecking();
     } catch (error) {
         console.error('Erreur:', error);
         showNotification('Erreur lors de l\'ouverture du chat', 'danger');
@@ -610,7 +612,7 @@ function setupEventListeners() {
         attachmentsInput.addEventListener('change', handleImagePreview);
     }
 
-    document.querySelectorAll('.list-group-item').forEach(link => {
+    /*document.querySelectorAll('.list-group-item').forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
             document.querySelectorAll('.list-group-item').forEach(a => {
@@ -626,9 +628,9 @@ function setupEventListeners() {
                 loadUserTickets();
             }
         });
-    });
+    });*/
 
-    const searchInput = document.querySelector('.input-group input[type="text"]');
+    /*const searchInput = document.querySelector('.input-group input[type="text"]');
     if (searchInput) {
         searchInput.addEventListener('input', function(e) {
             document.querySelectorAll('.list-group-item').forEach(a => {
@@ -638,7 +640,7 @@ function setupEventListeners() {
             showSection('tickets');
             searchTickets(e.target.value);
         });
-    }
+    }*/
 }
 
 let checkMessagesInterval;

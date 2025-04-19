@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Tous les Utilisateurs{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Liste des Utilisateurs</h2>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Nom</th>
+                <th>Email</th>
+                <th>Rôle</th>
+                <th>Catégorie</th>
+                <th>Créé le</th>
+                <th>Tickets</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.username }}</td>
+                <td>{{ user.email }}</td>
+                <td>{{ user.role }}</td>
+                <td>{{ user.category_id }}</td>
+                <td>{{ user.created_at.strftime('%d/%m/%Y') }}</td>
+                <td>
+                  <a href="{{ url_for('user_tickets', user_id=user.id) }}" class="btn btn-sm btn-info">
+                    Voir les tickets
+                  </a>
+                </td>                
+                <td>
+                    <!-- Bouton pour ouvrir la modale de détails -->
+                    <button class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#userModal{{ user.id }}">
+                        Info
+                    </button>
+    
+                    <!-- Lien pour envoyer un email de reset -->
+                    <a href="{{ url_for('send_reset_email', user_id=user.id) }}" class="btn btn-sm btn-warning">
+                        Reset MDP
+                    </a>
+                </td>
+            </tr>
+    
+            <!-- Modale Bootstrap avec les détails utilisateur -->
+            <div class="modal fade" id="userModal{{ user.id }}" tabindex="-1" aria-labelledby="userModalLabel{{ user.id }}" aria-hidden="true">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="userModalLabel{{ user.id }}">Détails de {{ user.username }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                  </div>
+                  <div class="modal-body text-start">
+                    <p><strong>Email :</strong> {{ user.email }}</p>
+                    <p><strong>Rôle :</strong> {{ user.role }}</p>
+                    <p><strong>Catégorie :</strong> {{ user.category_id }}</p>
+                    <p><strong>Créé le :</strong> {{ user.created_at.strftime('%d/%m/%Y') }}</p>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+</div>
+{% endblock %}
