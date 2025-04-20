@@ -46,9 +46,9 @@ function setupHelperEventListeners() {
 // Fonctions de chargement des tickets (appels API)
 async function loadAllTickets() {
     try {
-        const token = localStorage.getItem('user_token');  // Récupération du token
+        const token = sessionStorage.getItem('user_token');  
         console.log("🔍 Token récupéré :", token);
-        console.log("🔍 Token dans localStorage :", localStorage.getItem('user_token'));
+        console.log("🔍 Token dans sessionStorage :", sessionStorage.getItem('user_token'));
         console.log("🔍 Token dans cookies :", document.cookie);
 
         if (!token) {
@@ -59,7 +59,7 @@ async function loadAllTickets() {
         const response = await fetch('/api/tickets', {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${token}`,  // Passer le token
+                'Authorization': `Bearer ${token}`,  
                 'Content-Type': 'application/json'
             }
         });
@@ -69,7 +69,7 @@ async function loadAllTickets() {
         }
 
         const tickets = await response.json();
-        updateTicketsTable(tickets);  // Affichage des tickets dans la table
+        updateTicketsTable(tickets);  
     } catch (error) {
         console.error("❌ Erreur :", error);
         showNotification('Erreur lors du chargement des tickets', 'danger');
@@ -404,7 +404,7 @@ function updateActiveButton(clickedButton) {
 
 async function loadTicketDetails(ticketId) {
     try {
-        const response = await fetch(`/api/tickets/${ticketId}/details`); 
+        const response = await fetch(`/api/tickets/${ticketId}`); 
         const ticket = await response.json();
         
         if (ticket.error) {
@@ -526,8 +526,8 @@ function formatDate(dateString) {
 
 // Fonctions utilitaires
 function getCurrentUserId() {
-    // Récupérer l'ID depuis le localStorage
-    currentUserId = localStorage.getItem('sub');
+    // Récupérer l'ID depuis le sessionStorage
+    currentUserId = sessionStorage.getItem('sub');
     // Si pas d'ID, retourner une valeur par défaut (par exemple 1)
     return currentUserId || 1;
 }

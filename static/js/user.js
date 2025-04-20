@@ -471,6 +471,12 @@ function extractUserIdFromToken() {
 }
 
 
+function getColorFromUserId(userId) {
+    const hue = (userId * 137) % 360; 
+    return `hsl(${hue}, 70%, 85%)`; 
+}
+
+
 async function loadChatHistory(ticketId) {
     try {
         const response = await fetch(`/api/messages/${ticketId}`);
@@ -496,12 +502,18 @@ async function loadChatHistory(ticketId) {
     
         messages.forEach(msg => {
             const isCurrentUser = msg.sender_id == userId; // Vérifie si c'est l'utilisateur connecté
+
             const messageDiv = document.createElement('div');
-            console.log(msg.sender_id, msg.sender_type);
+            console.log(msg.sender_id, msg.sender_type, msg.sender_name);
     
-            // Ajoute des classes conditionnelles pour aligner les messages
+            if (!isCurrentUser) {
+                messageDiv.style.backgroundColor = getColorFromUserId(msg.sender_id);
+            }
+
             messageDiv.className = `chat-message ${isCurrentUser ? 'message-right' : 'message-left'}`;
             messageDiv.innerHTML = `
+                ${isCurrentUser ? `<small class="text-muted fw-bold d-block mb-1">You</small>` : 
+                    `<small class="text-muted fw-bold d-block mb-1">${msg.sender_name}</small>`}
                 <div class="message-content">${msg.content.replace(/\n/g, '<br>')}</div>
                 <small class="message-time">${msg.created_at}</small>
             `;
@@ -612,7 +624,7 @@ function setupEventListeners() {
         attachmentsInput.addEventListener('change', handleImagePreview);
     }
 
-    /*document.querySelectorAll('.list-group-item').forEach(link => {
+    document.querySelectorAll('.list-group-item').forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
             document.querySelectorAll('.list-group-item').forEach(a => {
@@ -628,9 +640,9 @@ function setupEventListeners() {
                 loadUserTickets();
             }
         });
-    });*/
+    });
 
-    /*const searchInput = document.querySelector('.input-group input[type="text"]');
+    const searchInput = document.querySelector('.input-group input[type="text"]');
     if (searchInput) {
         searchInput.addEventListener('input', function(e) {
             document.querySelectorAll('.list-group-item').forEach(a => {
@@ -640,7 +652,7 @@ function setupEventListeners() {
             showSection('tickets');
             searchTickets(e.target.value);
         });
-    }*/
+    }
 }
 
 let checkMessagesInterval;

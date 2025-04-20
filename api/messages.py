@@ -94,7 +94,7 @@ def init_messages_routes(app):
                     DATE_FORMAT(m.created_at, '%d/%m/%Y %H:%i') as created_at
                 FROM message m
                 LEFT JOIN user u ON m.sender_id = u.id
-                WHERE m.ticket_id = :ticket_id
+                WHERE m.ticket_id = ticket_id
                 ORDER BY m.created_at ASC
             """)
             

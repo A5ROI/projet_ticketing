@@ -56,17 +56,13 @@ def init_tickets_routes(app):
     @app.route('/api/tickets', methods=['GET'])
     def get_all_tickets():
         try:
-            # 🔥 Récupérer le token de l'en-tête Authorization
             print(f"🔍 Cookies reçus : {request.cookies}")  # Debug
-        
-        # 🔥 Récupérer le token depuis la session et non le header
             token = session.get('user_token')
             print(f"🔍 Token récupéré depuis session : {token}")  # Debug
 
             if not token:
                 return jsonify({'error': 'Unauthorized: Token not found in session'}), 40
 
-            # Vérifier et décoder le token
             user = get_current_user(token)
             print(f"👤 Utilisateur connecté : {user}")
 
@@ -74,10 +70,10 @@ def init_tickets_routes(app):
             if user['role'] == 'Client':
                 tickets = Ticket.query.filter_by(created_by=user['id']).all()
             elif user['role'] == 'Helper':
-                print("🔍 Recherche des tickets de la catégorie...")
-                tickets = Ticket.query.filter(Ticket.category_id == user['category_id']).all()
+                user = User.query.get(user['id'])
+                tickets = Ticket.query.filter_by(category_id = user.category_id).all()
                 print(f"✅ Tickets trouvés : {len(tickets)}")
-            else:
+            elif user['role'] == 'Admin':
                 tickets = Ticket.query.all()
 
             tickets_list = [{
@@ -104,7 +100,12 @@ def init_tickets_routes(app):
             return jsonify({'error': 'Unauthorized'}), 401
         
         try:
-            query = text("SELECT * FROM ticket WHERE id = :id")
+            query = text("""
+                         SELECT ticket.*, user.username 
+                            FROM ticket
+                            JOIN user ON ticket.created_by = user.id
+                         WHERE ticket.id = :id
+                         """)
             result = db.session.execute(query, {'id': id}).mappings().fetchone()
             if not result:
                 return jsonify({'error': 'Ticket not found'}), 404
