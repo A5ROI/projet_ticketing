@@ -57,22 +57,19 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <!-- Dans la section table -->
                     <div class="table-responsive">
                         <table class="table table-hover" id="userTicketsTable">
                             <thead>
                                 <tr>
-                                    <th>Utilisateur</th>
+                                    <th>Id</th>
                                     <th>Statut</th>
                                     <th>Sujet</th>
                                     <th>Catégorie</th>
-                                    <th>Priorité</th>
                                     <th>Date</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>                            
                             <tbody id="ticketsList">
-                                <!-- Les tickets seront ajoutés dynamiquement ici -->
                             </tbody>
                         </table>
                     </div>
@@ -99,15 +96,7 @@
                                 <option value="3">Facturation</option>
                                 <option value="4">Autre</option>
                             </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="priority" class="form-label">Priorité</label>
-                            <select class="form-select" id="priority" required>
-                                <option value="Basse">Basse</option>
-                                <option value="Moyenne">Moyenne</option>
-                                <option value="Haute">Haute</option>
-                            </select>
-                        </div>
+                        </div> 
                         <div class="mb-3">
                             <label for="description" class="form-label">Description</label>
                             <textarea class="form-control" id="description" rows="4" required></textarea>

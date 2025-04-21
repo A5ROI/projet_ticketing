@@ -106,6 +106,9 @@ def create_app():
                     elif session['user_role'] == 'Helper':
                         return jsonify({"access_token": token,"user_id":session['user_id'], "redirect": "/helper"})
                     
+                    elif session['user_role'] == 'Admin':
+                        return jsonify({"access_token": token,"user_id":session['user_id'], "redirect": "/helper"})
+                    
                 else:
                     flash("Erreur lors de la récupération des informations utilisateur", "danger")
                     return jsonify({"error": "Erreur récupération utilisateur"}), 500

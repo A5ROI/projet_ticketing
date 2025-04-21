@@ -39,7 +39,7 @@ def init_tickets_routes(app):
             new_ticket = Ticket(
                 subject=ticket_data['subject'],
                 description=ticket_data['description'],
-                priority=ticket_data['priority'],
+                priority='Basse',
                 created_by=current_user['id'],
                 category_id=ticket_data['category']
             )
@@ -82,7 +82,8 @@ def init_tickets_routes(app):
                 "category": ticket.category.name,
                 "priority": ticket.priority,
                 "status": ticket.status,
-                "created_at": ticket.created_at.strftime("%d/%m/%Y %H:%M")
+                "created_at": ticket.created_at.strftime("%d/%m/%Y %H:%M"),
+                "username": ticket.creator.username if ticket.creator else "Anonyme"
             } for ticket in tickets]
             print(tickets)
 
@@ -115,23 +116,23 @@ def init_tickets_routes(app):
     
     @app.route('/api/tickets/<int:id>', methods=['PUT'])
     def update_ticket(id):
-        user = get_current_user()
+        token = session.get('user_token')
+        user = get_current_user(token)
         if not user:
             return jsonify({'error': 'Unauthorized'}), 401
         
         try:
             data = request.json
             update_query = text("""
-                UPDATE tickets SET subject = :subject, description = :description, category = :category, priority = :priority
-                WHERE id = :id AND created_by = :user_id
+                UPDATE ticket 
+                                SET priority = :priority, 
+                                status = :status
+                WHERE id = :id
             """)
             db.session.execute(update_query, {
                 'id': id,
-                'subject': data['subject'],
-                'description': data['description'],
-                'category': data['category'],
                 'priority': data['priority'],
-                'user_id': user['id']
+                'status': data['status'],
             })
             db.session.commit()
             return jsonify({'success': True, 'message': 'Ticket mis à jour'})
@@ -156,17 +157,33 @@ def init_tickets_routes(app):
     
     @app.route('/api/tickets/<int:id>/close', methods=['PATCH'])
     def close_ticket(id):
-        user = get_current_user()
+        token = session.get('user_token')
+        user = get_current_user(token)
         if not user:
             return jsonify({'error': 'Unauthorized'}), 401
         
         try:
-            close_query = text("UPDATE tickets SET status = 'Fermé' WHERE id = :id")
-            db.session.execute(close_query, {'id': id})
+            data = request.get_json() or {}
+            print("📦 JSON reçu :", data) 
+            reason = data.get('reason', '')
+
+
+            close_query = text(""" 
+                UPDATE ticket 
+                SET status = 'Fermé', close_reason = :reason, closed_at = :closed_at 
+                WHERE id = :id 
+            """)
+
+            db.session.execute(close_query,{
+                'id': id,
+                'reason': reason,
+                'closed_at': datetime.utcnow()
+                })
             db.session.commit()
-            return jsonify({'success': True, 'message': 'Ticket fermé'})
+            return jsonify({'success': True, 'message': 'Ticket fermé avec succès'})
         except Exception as e:
             db.session.rollback()
+            print(e)
             return jsonify({'error': str(e)}), 500
     
     return app

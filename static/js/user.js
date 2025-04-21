@@ -83,7 +83,6 @@ async function submitNewTicket(event) {
         subject: document.getElementById('subject').value.trim(),
         description: document.getElementById('description').value.trim(),
         category: document.getElementById('category').value,
-        priority: document.getElementById('priority').value
     };
 
     try {
@@ -393,7 +392,6 @@ function displayTickets(tickets) {
             <td>${getStatusIcon(ticket.status)}${ticket.status}</td>
             <td>${ticket.subject}</td>
             <td>${getCategoryLabel(ticket.category)}</td>
-            <td>${getPriorityIcon(ticket.priority)}${ticket.priority}</td>
             <td>${formattedDate}</td>
             <td class="text-center">
                 ${ticket.status !== 'Fermé' ? `

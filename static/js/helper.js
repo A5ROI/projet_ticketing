@@ -1,5 +1,8 @@
-// Variables globales
+let allTickets = []; 
+let searchTerm = '';
 let currentTicketId = null;
+let currentStatusFilter = null;
+let currentPriorityFilter = null;
 
 // Templates de réponses prédéfinies
 const responseTemplates = {
@@ -8,7 +11,6 @@ const responseTemplates = {
     template3: "Bonjour,\n\nVoici la solution à votre problème :\n\n1. [Étapes de résolution]\n2. [Instructions]\n\nN'hésitez pas si vous avez d'autres questions.\n\nCordialement,\nLe Support"
 };
 
-// Initialisation
 document.addEventListener('DOMContentLoaded', function() {
     loadAllTickets();
     setupHelperEventListeners();
@@ -16,31 +18,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Configuration des écouteurs d'événements
 function setupHelperEventListeners() {
-    // Filtres de statut
+
     document.querySelectorAll('[data-filter]').forEach(button => {
-        button.addEventListener('click', function() {
-            updateActiveButton(this);
-            const status = this.dataset.filter;
-            if (status === 'all') {
-                loadAllTickets();
-            } else {
-                loadTicketsByStatus(status);
-            }
+        button.addEventListener('click', function () {
+            currentStatusFilter = this.getAttribute('data-filter') === 'all' ? null : this.getAttribute('data-filter');
+            applyFilters();
         });
     });
-
-    // Filtres de priorité
+    
     document.querySelectorAll('[data-priority]').forEach(button => {
-        button.addEventListener('click', function() {
-            updateActiveButton(this);
-            loadTicketsByPriority(this.dataset.priority);
+        button.addEventListener('click', function () {
+            currentPriorityFilter = this.getAttribute('data-priority');
+            applyFilters();
         });
     });
-
+    
     // Recherche
     document.getElementById('ticketSearch')?.addEventListener('input', debounce(function(e) {
-        searchTickets(e.target.value);
+        searchTerm = e.target.value; // <-- on met à jour la variable globale
+        applyFilters(); // <-- on applique le filtre complet avec recherche + statut + priorité
     }, 300));
+    document.getElementById('searchButton')?.addEventListener('click', function() {
+        const searchTerm = document.getElementById('ticketSearch').value;  
+        searchTickets(searchTerm);
+    });
 }
 
 // Fonctions de chargement des tickets (appels API)
@@ -69,7 +70,8 @@ async function loadAllTickets() {
         }
 
         const tickets = await response.json();
-        updateTicketsTable(tickets);  
+        allTickets = tickets;
+        applyFilters();  
     } catch (error) {
         console.error("❌ Erreur :", error);
         showNotification('Erreur lors du chargement des tickets', 'danger');
@@ -77,177 +79,47 @@ async function loadAllTickets() {
 }
 
 
-async function loadTicketsByStatus(status) {
-    try {
-        const response = await fetch(`/api/helper/tickets/status/${status}`);
-        const tickets = await response.json();
-        updateTicketsTable(tickets);
-    } catch (error) {
-        showNotification('Erreur lors du filtrage des tickets', 'danger');
+
+
+function applyFilters() {
+    let filtered = allTickets;
+
+    if (currentStatusFilter && currentStatusFilter !== 'all') {
+        filtered = filtered.filter(ticket => ticket.status.toLowerCase() === currentStatusFilter.toLowerCase());
     }
+
+    if (currentPriorityFilter) {
+        filtered = filtered.filter(ticket => ticket.priority.toLowerCase() === currentPriorityFilter.toLowerCase());
+    }
+
+    if (searchTerm) {
+        filtered = filtered.filter(ticket =>
+            ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            ticket.username?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            ticket.id.toString().includes(searchTerm)
+        );
+    }
+
+    updateTicketsTable(filtered);
 }
 
-async function loadTicketsByPriority(priority) {
-    try {
-        const response = await fetch(`/api/helper/tickets/priority/${priority}`);
-        const tickets = await response.json();
-        updateTicketsTable(tickets);
-    } catch (error) {
-        showNotification('Erreur lors du filtrage des tickets', 'danger');
-    }
+
+
+function searchTickets(term) {
+    const lowerTerm = term.toLowerCase();
+
+    const filteredTickets = allTickets.filter(ticket => {
+        return (
+            ticket.subject.toLowerCase().includes(lowerTerm) ||
+            (ticket.username && ticket.username.toLowerCase().includes(lowerTerm)) ||
+            ticket.status.toLowerCase().includes(lowerTerm) ||
+            ticket.priority.toLowerCase().includes(lowerTerm)
+        );
+    });
+
+    updateTicketsTable(filteredTickets);
 }
 
-async function searchTickets(query) {
-    // Utiliser exactement le même mapping des catégories que dans user.js
-    const categoryMapping = {
-        // Gestion de compte - toutes les combinaisons possibles
-        'g': 'compte',
-        'ge': 'compte',
-        'ges': 'compte',
-        'gest': 'compte',
-        'gesti': 'compte',
-        'gestio': 'compte',
-        'gestion': 'compte',
-        'gestion ': 'compte',
-        'gestion d': 'compte',
-        'gestion de': 'compte',
-        'gestion de ': 'compte',
-        'gestion de c': 'compte',
-        'gestion de co': 'compte',
-        'gestion de com': 'compte',
-        'gestion de comp': 'compte',
-        'gestion de compt': 'compte',
-        'gestion de compte': 'compte',
-
-        // Technique - toutes les combinaisons possibles
-        't': 'technique',
-        'te': 'technique',
-        'tec': 'technique',
-        'tech': 'technique',
-        'techn': 'technique',
-        'techni': 'technique',
-        'techniq': 'technique',
-        'techniqu': 'technique',
-        'technique': 'technique',
-        'p': 'technique',
-        'pr': 'technique',
-        'pro': 'technique',
-        'prob': 'technique',
-        'probl': 'technique',
-        'proble': 'technique',
-        'problem': 'technique',
-        'probleme': 'technique',
-        'problème': 'technique',
-        'probleme t': 'technique',
-        'problème t': 'technique',
-        'probleme te': 'technique',
-        'problème te': 'technique',
-        'probleme tec': 'technique',
-        'problème tec': 'technique',
-        'probleme tech': 'technique',
-        'problème tech': 'technique',
-        'probleme techn': 'technique',
-        'problème techn': 'technique',
-        'probleme techni': 'technique',
-        'problème techni': 'technique',
-        'probleme techniq': 'technique',
-        'problème techniq': 'technique',
-        'probleme techniqu': 'technique',
-        'problème techniqu': 'technique',
-        'probleme technique': 'technique',
-        'problème technique': 'technique',
-
-        // Facturation - toutes les combinaisons possibles
-        'f': 'facturation',
-        'fa': 'facturation',
-        'fac': 'facturation',
-        'fact': 'facturation',
-        'factu': 'facturation',
-        'factur': 'facturation',
-        'factura': 'facturation',
-        'facturat': 'facturation',
-        'facturati': 'facturation',
-        'facturatio': 'facturation',
-        'facturation': 'facturation',
-
-        // Autre - toutes les combinaisons possibles
-        'a': 'autre',
-        'au': 'autre',
-        'aut': 'autre',
-        'autr': 'autre',
-        'autre': 'autre'
-    };
-
-    try {
-        const searchTerm = query.trim().toLowerCase();
-        const mappedTerm = categoryMapping[searchTerm] || searchTerm;
-
-        const response = await fetch(`/api/helper/tickets/search?q=${encodeURIComponent(searchTerm)}`);
-        if (!response.ok) {
-            throw new Error('Erreur lors de la recherche');
-        }
-        
-        const tickets = await response.json();
-        
-        // Fonction pour vérifier si une chaîne est une date valide
-        const isValidDate = (dateStr) => {
-            const dateRegex = /^(\d{1,2})[/-](\d{1,2})[/-]?(\d{0,4})?$/;
-            return dateRegex.test(dateStr);
-        };
-
-        // Fonction pour formater une date pour la comparaison
-        const formatDateForComparison = (dateStr) => {
-            return dateStr.split(' ')[0]; // Prend seulement la partie date
-        };
-
-        // Filtrage plus précis des résultats
-        const filteredTickets = tickets.filter(ticket => {
-            const searchTermLower = searchTerm.toLowerCase();
-            
-            // Recherche par date
-            if (isValidDate(searchTermLower)) {
-                const ticketDate = formatDateForComparison(ticket.created_at);
-                return ticketDate.includes(searchTermLower);
-            }
-
-            // Pour les catégories
-            if (Object.values(categoryMapping).includes(ticket.category.toLowerCase())) {
-                for (const [key, value] of Object.entries(categoryMapping)) {
-                    if (value === ticket.category.toLowerCase() && key.startsWith(searchTermLower)) {
-                        return true;
-                    }
-                }
-            }
-            
-            // Pour les sujets
-            if (searchTermLower.length > 2) {
-                const subjectMatch = ticket.subject.toLowerCase().includes(searchTermLower);
-                if (subjectMatch) {
-                    const words = ticket.subject.toLowerCase().split(' ');
-                    return words.some(word => 
-                        word.startsWith(searchTermLower) || 
-                        searchTermLower.startsWith(word) ||
-                        word.includes(searchTermLower)
-                    );
-                }
-            }
-            
-            // Autres critères de recherche
-            return (
-                ticket.description.toLowerCase().includes(searchTermLower) ||
-                ticket.priority.toLowerCase().includes(searchTermLower) ||
-                ticket.status.toLowerCase().includes(searchTermLower) ||
-                ticket.username.toLowerCase().includes(searchTermLower) ||
-                ticket.created_at.includes(searchTermLower)
-            );
-        });
-
-        updateTicketsTable(filteredTickets);
-    } catch (error) {
-        console.error('Erreur de recherche:', error);
-        showNotification('Erreur lors de la recherche', 'danger');
-    }
-}
 
 
 // Gestion des réponses et messages
@@ -323,12 +195,18 @@ async function loadTicketMessages(ticketId) {
 }
 
 async function closeTicket() {
+    console.log("📣 closeTicket() appelée !");
+    const token = sessionStorage.getItem('user_token');
+    console.log("🆔 currentTicketId :", currentTicketId);
     const closeReason = document.getElementById('closeReason').value;
     
     try {
-        const response = await fetch(`/api/helper/tickets/${currentTicketId}/close`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+        const response = await fetch(`/api/tickets/${currentTicketId}/close`, {
+            method: 'PATCH',
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+             },
             body: JSON.stringify({ reason: closeReason })
         });
 
@@ -340,6 +218,7 @@ async function closeTicket() {
         }
     } catch (error) {
         showNotification('Erreur lors de la fermeture du ticket', 'danger');
+        console.log(error)
     }
 }
 // Fonctions d'affichage et UI
@@ -361,6 +240,7 @@ function updateTicketsTable(tickets) {
     tickets.forEach(ticket => {
         const row = tbody.insertRow();
         row.innerHTML = `
+            <td>${ticket.id || 'Anonyme'}</td>
             <td>${ticket.username || 'Anonyme'}</td>
             <td>
                 ${getStatusIcon(ticket.status)}
@@ -449,23 +329,42 @@ async function openResponseModal(ticketId) {
 
 function displayTicketDetails(ticket) {
     document.getElementById('ticketDetails').innerHTML = `
-        <div class="row">
-            <div class="col-md-6">
-                <p><strong>Utilisateur:</strong> ${ticket.username || 'Anonyme'}</p>
-                <p><strong>Sujet:</strong> ${ticket.subject}</p>
-                <p><strong>Catégorie:</strong> ${formatCategory(ticket.category)}</p>
-            </div>
-            <div class="col-md-6">
-                <p><strong>Priorité:</strong> ${ticket.priority}</p>
-                <p><strong>Statut:</strong> ${ticket.status}</p>
-                <p><strong>Date:</strong> ${formatDate(ticket.created_at)}</p>
+        <div class="ticket-summary">  
+            <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Utilisateur:</strong> ${ticket.username || 'Anonyme'}</p>
+                        <p><strong>Sujet:</strong> ${ticket.subject}</p>
+                        <p><strong>Catégorie:</strong> ${formatCategory(ticket.category)}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p>
+                                    <label for="prioritySelect"><strong>Priorité:</strong></label>
+                                    <select class="form-select-sm" id="prioritySelect">
+                                        <option value="Basse" ${ticket.priority === 'Basse' ? 'selected' : ''}>Basse</option>
+                                        <option value="Moyenne" ${ticket.priority === 'Moyenne' ? 'selected' : ''}>Moyenne</option>
+                                        <option value="Haute" ${ticket.priority === 'Haute' ? 'selected' : ''}>Haute</option>
+                                    </select>
+                        </p>
+                        <p>
+                            <label for="statusSelect"><strong>Statut:</strong></label>
+                            <select class="form-select-sm" id="statusSelect">
+                                <option value="En attente" ${ticket.status === 'En attente' ? 'selected' : ''}>En attente</option>
+                                <option value="En cours" ${ticket.status === 'En cours' ? 'selected' : ''}>En cours</option>
+                                <option value="Fermé" ${ticket.status === 'Fermé' ? 'selected' : ''}>Fermé</option>
+                            </select>
+                        </p>
+                        <p><strong>Date:</strong> ${formatDate(ticket.created_at)}</p>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <strong>Description:</strong>
+                    <p class="mb-0">${ticket.description ? ticket.description.replace(/\n/g, '<br>') : 'Aucune description'}</p>
+                </div>
+                ${ticket.attachments ? displayAttachments(ticket.attachments) : ''}
+            <div class="text-end mt-4">
+                <button class="btn btn-primary btn-sm" onclick="updateTicket(${ticket.id})">Mettre à jour</button>
             </div>
         </div>
-        <div class="mt-2">
-            <strong>Description:</strong>
-            <p class="mb-0">${ticket.description ? ticket.description.replace(/\n/g, '<br>') : 'Aucune description'}</p>
-        </div>
-        ${ticket.attachments ? displayAttachments(ticket.attachments) : ''}
     `;
 }
 
@@ -524,11 +423,8 @@ function formatDate(dateString) {
     return dateString; // Utiliser directement le format du backend
 }
 
-// Fonctions utilitaires
 function getCurrentUserId() {
-    // Récupérer l'ID depuis le sessionStorage
     currentUserId = sessionStorage.getItem('sub');
-    // Si pas d'ID, retourner une valeur par défaut (par exemple 1)
     return currentUserId || 1;
 }
 
@@ -606,22 +502,18 @@ function openImageModal(imgSrc) {
 
 function debounce(func, wait) {
     let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
+    return function(...args) {
         clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
+        timeout = setTimeout(() => func.apply(this, args), wait);
     };
 }
+
 
 async function viewClosedTicketDetails(ticketId) {
     try {
         const response = await fetch(`/api/tickets/${ticketId}/details`);
         const ticket = await response.json();
 
-        // Modifier le titre et l'apparence du modal
         const modalTitle = document.querySelector('#responseModal .modal-title');
         modalTitle.innerHTML = `<i class="fas fa-eye"></i> Récapitulatif du ticket fermé de ${ticket.username}`;
         document.querySelector('#responseModal .modal-header').classList.remove('bg-primary');
@@ -672,7 +564,6 @@ async function viewClosedTicketDetails(ticketId) {
             </div>
         `;
 
-        // Afficher l'historique des conversations
         const closedConversationHistory = document.getElementById('closedConversationHistory');
         if (ticket.messages && ticket.messages.length > 0) {
             closedConversationHistory.innerHTML = ticket.messages.map(msg => `
@@ -688,7 +579,6 @@ async function viewClosedTicketDetails(ticketId) {
             closedConversationHistory.innerHTML = '<p class="text-muted">Aucun message dans l\'historique</p>';
         }
 
-        // Afficher le modal
         const responseModal = new bootstrap.Modal(document.getElementById('responseModal'));
         responseModal.show();
     } catch (error) {
@@ -696,6 +586,40 @@ async function viewClosedTicketDetails(ticketId) {
         showNotification('Erreur lors du chargement des détails du ticket', 'danger');
     }
 }
+
+async function updateTicket(ticketId) {
+    const token = sessionStorage.getItem('user_token');
+    const priority = document.getElementById('prioritySelect').value;
+    const status = document.getElementById('statusSelect').value;
+    
+
+    try {
+        const response = await fetch(`/api/tickets/${ticketId}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                priority,
+                status,
+            })
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+            await loadAllTickets(); 
+            showNotification(result.message, 'success');
+            
+        } else {
+            throw new Error(result.error || 'Erreur de mise à jour');
+        }
+    } catch (error) {
+        console.error('❌ Erreur updateTicket:', error);
+        showNotification('Erreur lors de la mise à jour du ticket', 'danger');
+    }
+}
+
 
 async function resetData() {
     console.log('Fonction resetData appelée');
