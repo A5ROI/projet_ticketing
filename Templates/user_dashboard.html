@@ -30,13 +30,16 @@
                     <h5 class="mb-0"><i class="fas fa-filter"></i> Filtres</h5>
                 </div>
                 <div class="list-group list-group-flush">
-                    <a href="#en-cours" class="list-group-item list-group-item-action">
+                    <a href="#tous" class="list-group-item list-group-item-action" id="showAllTickets">
+                        <i class="fas fa-list"></i> Tous les tickets
+                    </a>                 
+                    <a href="#en-cours" class="list-group-item list-group-item-action" data-status="En cours">
                         <i class="fas fa-spinner fa-spin text-primary"></i> En cours
                     </a>
-                    <a href="#en-attente" class="list-group-item list-group-item-action">
+                    <a href="#en-attente" class="list-group-item list-group-item-action" data-status="En attente">
                         <i class="fas fa-clock text-warning"></i> En attente
                     </a>
-                    <a href="#fermes" class="list-group-item list-group-item-action">
+                    <a href="#fermes" class="list-group-item list-group-item-action" data-status="Fermé">
                         <i class="fas fa-check-circle text-success"></i> Fermés
                     </a>
                 </div>
@@ -51,7 +54,7 @@
                     <h5 class="mb-0"><i class="fas fa-list"></i> Mes Tickets</h5>
                     <div class="input-group w-50">
                         <input type="text" class="form-control" id="searchBar" placeholder="Rechercher un ticket...">
-                        <button class="btn btn-outline-secondary" type="button">
+                        <button class="btn btn-outline-secondary" type="button" id="searchUserBtn">
                             <i class="fas fa-search"></i>
                         </button>
                     </div>

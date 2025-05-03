@@ -511,7 +511,7 @@ function debounce(func, wait) {
 
 async function viewClosedTicketDetails(ticketId) {
     try {
-        const response = await fetch(`/api/tickets/${ticketId}/details`);
+        const response = await fetch(`/api/tickets/${ticketId}`);
         const ticket = await response.json();
 
         const modalTitle = document.querySelector('#responseModal .modal-title');
