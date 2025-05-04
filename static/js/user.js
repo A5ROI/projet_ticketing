@@ -3,6 +3,8 @@ let currentTicketId = null;
 let currentChatTicketId = null;
 let currentUserId = null;
 let typingTimeout = null;
+let userTicketsData = []; 
+
 // Initialisation
 document.addEventListener('DOMContentLoaded', function() {
     // Récupérer l'ID utilisateur du localStorage s'il existe
@@ -21,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 
-// Gestion des images
+
 function handleImagePreview(event) {
     const preview = document.getElementById('imagePreview');
     preview.innerHTML = '';
@@ -83,7 +85,6 @@ async function submitNewTicket(event) {
         subject: document.getElementById('subject').value.trim(),
         description: document.getElementById('description').value.trim(),
         category: document.getElementById('category').value,
-        priority: document.getElementById('priority').value
     };
 
     try {
@@ -117,25 +118,6 @@ async function submitNewTicket(event) {
     }
 }
 
-async function loadTickets() {
-    const token = sessionStorage.getItem('user_token');  // Récupérer le token depuis le stockage
-    console.log("🔍 Token récupéré :", token); 
-    if (!token) {
-        console.error("Aucun token trouvé!");
-        return;
-    }
-
-    const response = await fetch('/api/tickets', {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${token}`,  // Envoi du token dans le header
-            'Content-Type': 'application/json'
-        }
-    });
-
-    const data = await response.json();
-    console.log("Tickets reçus :", data);
-}
 
 async function getTokenFromSession() {
     try {
@@ -181,6 +163,7 @@ async function loadUserTickets() {
         const tickets = await response.json();
         
         if (Array.isArray(tickets)) {
+            userTicketsData = tickets;
             displayTickets(tickets);
         } else {
             throw new Error('Format de réponse invalide');
@@ -191,170 +174,42 @@ async function loadUserTickets() {
     }
 }
 
-/*
-async function filterTicketsByStatus(status) {
-    try {
-        const userId = getCurrentUserId();
-        const response = await fetch(`/api/tickets/${userId}/status/${status}`);
-        const tickets = await response.json();
-        displayTickets(tickets);
-    } catch (error) {
-        showNotification('Erreur lors du filtrage des tickets', 'danger');
-    }
+function searchUserTickets(term) {
+    const lowerTerm = term.toLowerCase();
+    const filtered = userTicketsData.filter(ticket => {
+        return (
+            (ticket.subject && ticket.subject.toLowerCase().includes(lowerTerm)) ||
+            (ticket.status && ticket.status.toLowerCase().includes(lowerTerm)) ||
+            (ticket.category && ticket.category.toLowerCase().includes(lowerTerm))
+        );
+    });
+
+    displayTickets(filtered);
 }
 
 
-async function searchTickets(query) {
-    // Mapping des catégories pour la recherche progressive
-    const categoryMapping = {
-        'g': 'compte',
-        'ge': 'compte',
-        'ges': 'compte',
-        'gest': 'compte',
-        'gesti': 'compte',
-        'gestio': 'compte',
-        'gestion': 'compte',
-        'gestion ': 'compte',
-        'gestion d': 'compte',
-        'gestion de': 'compte',
-        'gestion de ': 'compte',
-        'gestion de c': 'compte',
-        'gestion de co': 'compte',
-        'gestion de com': 'compte',
-        'gestion de comp': 'compte',
-        'gestion de compt': 'compte',
-        'gestion de compte': 'compte',
+document.getElementById('searchBar')?.addEventListener('input', debounce(function(e) {
+    searchUserTickets(e.target.value);
+}, 300));
 
-        // Technique
-        't': 'technique',
-        'te': 'technique',
-        'tec': 'technique',
-        'tech': 'technique',
-        'techn': 'technique',
-        'techni': 'technique',
-        'techniq': 'technique',
-        'techniqu': 'technique',
-        'technique': 'technique',
-        'p': 'technique',
-        'pr': 'technique',
-        'pro': 'technique',
-        'prob': 'technique',
-        'probl': 'technique',
-        'proble': 'technique',
-        'problem': 'technique',
-        'probleme': 'technique',
-        'problème': 'technique',
-        'probleme t': 'technique',
-        'problème t': 'technique',
-        'probleme te': 'technique',
-        'problème te': 'technique',
-        'probleme tec': 'technique',
-        'problème tec': 'technique',
-        'probleme tech': 'technique',
-        'problème tech': 'technique',
-        'probleme techn': 'technique',
-        'problème techn': 'technique',
-        'probleme techni': 'technique',
-        'problème techni': 'technique',
-        'probleme techniq': 'technique',
-        'problème techniq': 'technique',
-        'probleme techniqu': 'technique',
-        'problème techniqu': 'technique',
-        'probleme technique': 'technique',
-        'problème technique': 'technique',
 
-        // Facturation
-        'f': 'facturation',
-        'fa': 'facturation',
-        'fac': 'facturation',
-        'fact': 'facturation',
-        'factu': 'facturation',
-        'factur': 'facturation',
-        'factura': 'facturation',
-        'facturat': 'facturation',
-        'facturati': 'facturation',
-        'facturatio': 'facturation',
-        'facturation': 'facturation',
+document.getElementById('searchUserBtn')?.addEventListener('click', function () {
+    const term = document.getElementById('searchBar').value;
+    searchUserTickets(term);
+});
 
-        // Autre
-        'a': 'autre',
-        'au': 'autre',
-        'aut': 'autre',
-        'autr': 'autre',
-        'autre': 'autre'
+function debounce(func, wait) {
+    let timeout;
+    return function (...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), wait);
     };
-
-    try {
-        const searchTerm = query.trim().toLowerCase();
-        const mappedTerm = categoryMapping[searchTerm] || searchTerm;
-
-        const response = await fetch(`/api/user/tickets/search?q=${encodeURIComponent(searchTerm)}`);
-        if (!response.ok) {
-            throw new Error('Erreur lors de la recherche');
-        }
-        
-        const tickets = await response.json();
-        
-        // Fonction pour vérifier si une chaîne est une date valide
-        const isValidDate = (dateStr) => {
-            const dateRegex = /^(\d{1,2})[/-](\d{1,2})[/-]?(\d{0,4})?$/;
-            return dateRegex.test(dateStr);
-        };
-
-        // Fonction pour formater une date pour la comparaison
-        const formatDateForComparison = (dateStr) => {
-            return dateStr.split(' ')[0]; // Prend seulement la partie date
-        };
-
-        // Filtrage plus précis des résultats
-        const filteredTickets = tickets.filter(ticket => {
-            const searchTermLower = searchTerm.toLowerCase();
-            
-            // Recherche par date
-            if (isValidDate(searchTermLower)) {
-                const ticketDate = formatDateForComparison(ticket.created_at);
-                return ticketDate.includes(searchTermLower);
-            }
-
-            // Pour les catégories
-            if (Object.values(categoryMapping).includes(ticket.category.toLowerCase())) {
-                for (const [key, value] of Object.entries(categoryMapping)) {
-                    if (value === ticket.category.toLowerCase() && key.startsWith(searchTermLower)) {
-                        return true;
-                    }
-                }
-            }
-            
-            // Pour les sujets
-            if (searchTermLower.length > 2) {
-                const subjectMatch = ticket.subject.toLowerCase().includes(searchTermLower);
-                if (subjectMatch) {
-                    const words = ticket.subject.toLowerCase().split(' ');
-                    return words.some(word => 
-                        word.startsWith(searchTermLower) || 
-                        searchTermLower.startsWith(word) ||
-                        word.includes(searchTermLower)
-                    );
-                }
-            }
-            
-            // Autres critères de recherche
-            return (
-                ticket.description.toLowerCase().includes(searchTermLower) ||
-                ticket.priority.toLowerCase().includes(searchTermLower) ||
-                ticket.status.toLowerCase().includes(searchTermLower) ||
-                ticket.username.toLowerCase().includes(searchTermLower) ||
-                ticket.created_at.includes(searchTermLower)
-            );
-        });
-
-        displayTickets(filteredTickets);
-    } catch (error) {
-        console.error('Erreur de recherche:', error);
-        showNotification('Erreur lors de la recherche', 'danger');
-    }
 }
-*/
+
+
+
+
 
 function displayTickets(tickets) {
     const tbody = document.querySelector('#userTicketsTable tbody');
@@ -393,7 +248,6 @@ function displayTickets(tickets) {
             <td>${getStatusIcon(ticket.status)}${ticket.status}</td>
             <td>${ticket.subject}</td>
             <td>${getCategoryLabel(ticket.category)}</td>
-            <td>${getPriorityIcon(ticket.priority)}${ticket.priority}</td>
             <td>${formattedDate}</td>
             <td class="text-center">
                 ${ticket.status !== 'Fermé' ? `
@@ -416,6 +270,25 @@ function displayTickets(tickets) {
         `;
     });
 }
+
+document.querySelectorAll('[data-status]')?.forEach(btn => {
+    btn.addEventListener('click', () => {
+        const status = btn.getAttribute('data-status');
+        filterUserTicketsByStatus(status);
+    });
+});
+
+document.getElementById('showAllTickets')?.addEventListener('click', () => {
+    displayTickets(userTicketsData);
+});
+
+function filterUserTicketsByStatus(status) {
+    const filtered = userTicketsData.filter(ticket =>
+        ticket.status && ticket.status.toLowerCase() === status.toLowerCase()
+    );
+    displayTickets(filtered);
+}
+
 
 // Gestion du chat
 async function sendMessage(event) {
@@ -471,6 +344,12 @@ function extractUserIdFromToken() {
 }
 
 
+function getColorFromUserId(userId) {
+    const hue = (userId * 137) % 360; 
+    return `hsl(${hue}, 70%, 85%)`; 
+}
+
+
 async function loadChatHistory(ticketId) {
     try {
         const response = await fetch(`/api/messages/${ticketId}`);
@@ -496,12 +375,18 @@ async function loadChatHistory(ticketId) {
     
         messages.forEach(msg => {
             const isCurrentUser = msg.sender_id == userId; // Vérifie si c'est l'utilisateur connecté
+
             const messageDiv = document.createElement('div');
-            console.log(msg.sender_id, msg.sender_type);
+            console.log(msg.sender_id, msg.sender_type, msg.sender_name);
     
-            // Ajoute des classes conditionnelles pour aligner les messages
+            if (!isCurrentUser) {
+                messageDiv.style.backgroundColor = getColorFromUserId(msg.sender_id);
+            }
+
             messageDiv.className = `chat-message ${isCurrentUser ? 'message-right' : 'message-left'}`;
             messageDiv.innerHTML = `
+                ${isCurrentUser ? `<small class="text-muted fw-bold d-block mb-1">You</small>` : 
+                    `<small class="text-muted fw-bold d-block mb-1">${msg.sender_name}</small>`}
                 <div class="message-content">${msg.content.replace(/\n/g, '<br>')}</div>
                 <small class="message-time">${msg.created_at}</small>
             `;
@@ -612,35 +497,6 @@ function setupEventListeners() {
         attachmentsInput.addEventListener('change', handleImagePreview);
     }
 
-    /*document.querySelectorAll('.list-group-item').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            document.querySelectorAll('.list-group-item').forEach(a => {
-                a.classList.remove('active');
-            });
-            this.classList.add('active');
-            const sectionId = this.getAttribute('href').replace('#', '');
-            showSection(sectionId);
-            
-            if (['en-cours', 'en-attente', 'fermes'].includes(sectionId)) {
-                filterTicketsByStatus(sectionId);
-            } else if (sectionId === 'tickets') {
-                loadUserTickets();
-            }
-        });
-    });*/
-
-    /*const searchInput = document.querySelector('.input-group input[type="text"]');
-    if (searchInput) {
-        searchInput.addEventListener('input', function(e) {
-            document.querySelectorAll('.list-group-item').forEach(a => {
-                a.classList.remove('active');
-            });
-            document.querySelector('a[href="#tickets"]').classList.add('active');
-            showSection('tickets');
-            searchTickets(e.target.value);
-        });
-    }*/
 }
 
 let checkMessagesInterval;

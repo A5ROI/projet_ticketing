@@ -49,6 +49,10 @@ class Message(db.Model):
     # Relations
     ticket = db.relationship('Ticket', back_populates='messages')
     sender = db.relationship('User', back_populates='messages')
+    
+    @property
+    def sender_name(self):
+        return self.sender.username if self.sender else "Inconnu"
 
 # Ajout de la relation dans Ticket et User
 Ticket.messages = db.relationship('Message', back_populates='ticket', cascade="all, delete-orphan")

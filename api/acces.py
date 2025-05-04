@@ -2,16 +2,10 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Enum, Text, DateTime
 from sqlalchemy.orm import Session
-from sqlalchemy_utils import database_exists, create_database
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from passlib.hash import bcrypt
 from datetime import datetime, timedelta
 import jwt as pyjwt
-import enum
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -22,7 +16,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 🔥 Prova prima con "*", poi restringi a ["http://localhost:5000"]
+    allow_origins=["*"],  # ["http://localhost:5000"]
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -137,3 +131,4 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
+

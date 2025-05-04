@@ -99,7 +99,16 @@ def create_app():
                 
 
                     flash("Connexion réussie!", "success")
-                    return jsonify({"access_token": token,"user_id":session['user_id'], "redirect": "/user"})
+
+                    if session['user_role'] == 'Client':
+                        return jsonify({"access_token": token,"user_id":session['user_id'], "redirect": "/user"})
+                    
+                    elif session['user_role'] == 'Helper':
+                        return jsonify({"access_token": token,"user_id":session['user_id'], "redirect": "/helper"})
+                    
+                    elif session['user_role'] == 'Admin':
+                        return jsonify({"access_token": token,"user_id":session['user_id'], "redirect": "/helper"})
+                    
                 else:
                     flash("Erreur lors de la récupération des informations utilisateur", "danger")
                     return jsonify({"error": "Erreur récupération utilisateur"}), 500
@@ -107,13 +116,40 @@ def create_app():
                 print("Identifiants invalides")
                 flash("Identifiants invalides", "danger")
                 return jsonify({"error": "Identifiants invalides"}), 401
-            
-            
-
-            
+      
         return render_template("login.html")
 
-    
+
+    @app.route('/my_profile', methods=['GET', 'POST'])
+    def my_profile():
+        user_id = session.get('user_id')
+        if not user_id:
+            flash("Vous devez être connecté pour accéder à votre profil.", "warning")
+            return redirect(url_for('login'))
+
+        user = User.query.get(user_id)
+
+        if request.method == 'POST':
+            username = request.form['username']
+            email = request.form['email']
+            new_password = request.form['password']
+            confirm_password = request.form['confirm_password']
+
+            user.username = username
+            user.email = email
+
+            if new_password:
+                if new_password != confirm_password:
+                    flash("Les mots de passe ne correspondent pas", "danger")
+                    return redirect(url_for('my_profile'))
+                user.password = generate_password_hash(new_password)
+
+            db.session.commit()
+            flash("Profil mis à jour avec succès", "success")
+            return redirect(url_for('my_profile'))
+
+        return render_template("my_profile.html", user=user)
+
 
 
     @app.route('/api/get_token', methods=['GET'])

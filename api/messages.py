@@ -3,6 +3,7 @@ from sqlalchemy import text
 from data.database import db
 from datetime import datetime
 import json
+from data.email_notifications import send_email
 
 def init_messages_routes(app):
     @app.route('/api/messages', methods=['POST'])
@@ -59,6 +60,22 @@ def init_messages_routes(app):
             """)
             db.session.execute(status_query, {'ticket_id': data['ticket_id']})
             
+            email_query= text("""
+                SELECT u.email, t.subject
+                FROM ticket t
+                JOIN user u ON t.created_by = u.id
+                WHERE t.id = :ticket_id
+                """)
+            result = db.session.execute(email_query, {'ticket_id': data['ticket_id']}).fetchone()
+
+            if result:
+                user_email = result.email
+                ticket_subject = result.subject or "Mise à jour de votre ticket"
+                subject= f"Réponse à votre ticket : {ticket_subject}"
+                body = data['content']
+
+                send_email(subject, user_email, body)
+                
             db.session.commit()
 
             # Retourner les données du message pour mise à jour immédiate
@@ -81,7 +98,7 @@ def init_messages_routes(app):
 
 
     # Route pour récupérer les messages
-    @app.route('/api/messages/<int:ticket_id>')
+    @app.route('/api/messages/<int:ticket_id>', methods=['GET'])
     def get_chat_history(ticket_id):
         try:
             query = text("""
