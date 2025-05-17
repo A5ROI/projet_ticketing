@@ -12,16 +12,52 @@ const responseTemplates = {
 };
 
 document.addEventListener('DOMContentLoaded', function() {
+    const alerts = document.querySelectorAll('.alert');
+
+    alerts.forEach(alert => {
+      setTimeout(() => {
+        const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+        bsAlert.close();
+      }, 4000); 
+    });
+
     loadAllTickets();
     setupHelperEventListeners();
+
+    const tbody = document.querySelector('tbody');
+
+    tbody.addEventListener('click', function (event) {
+        const chatButton = event.target.closest('.active-chat');
+        if (chatButton) {
+            const row = chatButton.closest('tr');
+            if (row) {
+                row.classList.remove('unread');
+            }
+
+            const ticketId = chatButton.getAttribute('data-ticket-id');
+            if (ticketId) {
+                markTicketAsRead(ticketId);
+            }
+        }
+    });
+
 });
+
+
+
 
 // Configuration des écouteurs d'événements
 function setupHelperEventListeners() {
 
     document.querySelectorAll('[data-filter]').forEach(button => {
         button.addEventListener('click', function () {
-            currentStatusFilter = this.getAttribute('data-filter') === 'all' ? null : this.getAttribute('data-filter');
+            filter = this.getAttribute('data-filter')
+            currentStatusFilter = filter === 'all' ? null : this.getAttribute('data-filter');
+            
+            if (filter === 'all') {
+                currentPriorityFilter = null;
+            }
+            
             applyFilters();
         });
     });
@@ -61,7 +97,6 @@ async function loadAllTickets() {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,  
-                'Content-Type': 'application/json'
             }
         });
 
@@ -136,7 +171,8 @@ async function sendResponse() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 ticket_id: currentTicketId,
-                content: response
+                content: response,
+                sender_id: getCurrentUserId()
             })
         });
 
@@ -173,18 +209,34 @@ async function loadTicketMessages(ticketId) {
             return;
         }
 
-        messages.forEach(msg => {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${msg.sender_type}-message`;
-            messageDiv.innerHTML = `
-                <div class="message-header">
-                    <strong>${msg.sender_type === 'helper' ? 'Support' : 'Utilisateur'}</strong>
-                    <span class="text-muted">${msg.created_at}</span>
-                </div>
-                <div class="message-content">${msg.content.replace(/\n/g, '<br>')}</div>
-            `;
-            conversationHistory.appendChild(messageDiv);
-        });
+        const currentUserId = sessionStorage.getItem('user_id'); // 🔸 Assure-toi qu’il est bien stocké
+
+messages.forEach(msg => {
+    const isCurrentUser = msg.sender_id == currentUserId;
+    const isSupport = msg.sender_type === 'helper';
+    const isAdmin = msg.sender_type === 'admin';
+    let senderLabel;
+    if (isCurrentUser) {
+        senderLabel = 'Vous';
+    } else if (isSupport) {
+        senderLabel = 'Support';
+    } else if (isAdmin) {
+        senderLabel = 'Admin';
+    }
+    else {
+        senderLabel = msg.username || 'Utilisateur';
+    }
+    const alignmentClass = isCurrentUser ? 'message-right' : 'message-left';
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message chat-message ${alignmentClass}`;
+    messageDiv.innerHTML = `
+        <small class="text-muted fw-bold d-block mb-1">${senderLabel}</small>
+        <div class="message-content">${msg.content.replace(/\n/g, '<br>')}</div>
+        <small class="message-time">${msg.created_at}</small>
+    `;
+    conversationHistory.appendChild(messageDiv);
+});
         
         conversationHistory.scrollTop = conversationHistory.scrollHeight;
         
@@ -239,6 +291,14 @@ function updateTicketsTable(tickets) {
 
     tickets.forEach(ticket => {
         const row = tbody.insertRow();
+
+        
+
+        if (ticket.is_read === false) {
+            console.log(ticket.is_read)
+            row.classList.add('unread');
+        }
+
         row.innerHTML = `
             <td>${ticket.id || 'Anonyme'}</td>
             <td>${ticket.username || 'Anonyme'}</td>
@@ -256,7 +316,7 @@ function updateTicketsTable(tickets) {
             <td class="text-center">
                 ${ticket.status !== 'Fermé' ? `
                     <div class="action-buttons">
-                        <button class="action-btn active-chat" onclick="openResponseModal(${ticket.id})" title="Ouvrir le chat">
+                        <button class="action-btn active-chat" data-ticket-id="${ticket.id}" onclick="openResponseModal(${ticket.id})" title="Ouvrir le chat">
                             <i class="fas fa-comment-dots"></i>
                         </button>
                         <button class="action-btn active-close" onclick="openCloseModal(${ticket.id})" title="Fermer le ticket">
@@ -265,15 +325,27 @@ function updateTicketsTable(tickets) {
                     </div>
                 ` : `
                     <div class="action-buttons">
-                        <button class="action-btn closed-btn" onclick="viewClosedTicketDetails(${ticket.id})" title="Voir le résumé">
+                        <button class="action-btn closed-btn" data-ticket-id="${ticket.id}" onclick="viewClosedTicketDetails(${ticket.id})" title="Voir le résumé">
                             <i class="fas fa-eye"></i>
                         </button>
                     </div>
                 `}
             </td>
         `;
+        
+        
     });
 }
+
+function markTicketAsRead(ticketId) {
+    fetch(`/message/${ticketId}/mark-as-read`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    });
+}
+
 
 function updateActiveButton(clickedButton) {
     document.querySelectorAll('[data-filter], [data-priority]').forEach(btn => {
@@ -328,6 +400,7 @@ async function openResponseModal(ticketId) {
 }
 
 function displayTicketDetails(ticket) {
+    const imageHTML = ticket.image_path ? `<img src="${ticket.image_path}" alt="Image jointe" style="max-width: 100%; height: auto;" />` : '';
     document.getElementById('ticketDetails').innerHTML = `
         <div class="ticket-summary">  
             <div class="row">
@@ -345,20 +418,16 @@ function displayTicketDetails(ticket) {
                                         <option value="Haute" ${ticket.priority === 'Haute' ? 'selected' : ''}>Haute</option>
                                     </select>
                         </p>
-                        <p>
-                            <label for="statusSelect"><strong>Statut:</strong></label>
-                            <select class="form-select-sm" id="statusSelect">
-                                <option value="En attente" ${ticket.status === 'En attente' ? 'selected' : ''}>En attente</option>
-                                <option value="En cours" ${ticket.status === 'En cours' ? 'selected' : ''}>En cours</option>
-                                <option value="Fermé" ${ticket.status === 'Fermé' ? 'selected' : ''}>Fermé</option>
-                            </select>
-                        </p>
+                            <p><strong>Statut:</strong> ${ticket.status}</p>
                         <p><strong>Date:</strong> ${formatDate(ticket.created_at)}</p>
                     </div>
                 </div>
                 <div class="mt-2">
                     <strong>Description:</strong>
                     <p class="mb-0">${ticket.description ? ticket.description.replace(/\n/g, '<br>') : 'Aucune description'}</p>
+                </div>
+                <div class="ticket-image">
+                    ${imageHTML}
                 </div>
                 ${ticket.attachments ? displayAttachments(ticket.attachments) : ''}
             <div class="text-end mt-4">
@@ -424,7 +493,7 @@ function formatDate(dateString) {
 }
 
 function getCurrentUserId() {
-    currentUserId = sessionStorage.getItem('sub');
+    currentUserId = sessionStorage.getItem('user_id');
     return currentUserId || 1;
 }
 
@@ -565,16 +634,25 @@ async function viewClosedTicketDetails(ticketId) {
         `;
 
         const closedConversationHistory = document.getElementById('closedConversationHistory');
+        const currentUserId = sessionStorage.getItem('user_id');
+
         if (ticket.messages && ticket.messages.length > 0) {
-            closedConversationHistory.innerHTML = ticket.messages.map(msg => `
-                <div class="message ${msg.sender_type}-message">
-                    <div class="message-header">
-                        <strong>${msg.username || 'Anonyme'}</strong>
-                        <span class="text-muted">${msg.formatted_date}</span>
-                    </div>
-                    <div class="message-content">${msg.content.replace(/\n/g, '<br>')}</div>
+        closedConversationHistory.innerHTML = ticket.messages.map(msg => {
+        const isCurrentUser = msg.sender_id == currentUserId;
+        console.log(msg.sender_id, msg.sender_type, msg.sender_name);
+        const alignmentClass = isCurrentUser ? 'message-right' : 'message-left';
+        const senderLabel = isCurrentUser ? 'Vous' : msg.username || 'Anonyme';
+
+        return `
+            <div class="message chat-message ${alignmentClass}">
+                <div class="message-header">
+                    <strong>${senderLabel}</strong>
+                    <span class="text-muted">${msg.formatted_date}</span>
                 </div>
-            `).join('');
+                <div class="message-content">${msg.content.replace(/\n/g, '<br>')}</div>
+            </div>
+        `;
+    }).join('');
         } else {
             closedConversationHistory.innerHTML = '<p class="text-muted">Aucun message dans l\'historique</p>';
         }
@@ -590,7 +668,6 @@ async function viewClosedTicketDetails(ticketId) {
 async function updateTicket(ticketId) {
     const token = sessionStorage.getItem('user_token');
     const priority = document.getElementById('prioritySelect').value;
-    const status = document.getElementById('statusSelect').value;
     
 
     try {
@@ -602,7 +679,6 @@ async function updateTicket(ticketId) {
             },
             body: JSON.stringify({
                 priority,
-                status,
             })
         });
 

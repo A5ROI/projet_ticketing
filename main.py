@@ -15,6 +15,8 @@ from api.admin import *
 
 
 FASTAPI_URL = "http://127.0.0.1:8000"  # Port de FastAPI
+UPLOAD_FOLDER = "static/uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 def create_app():
@@ -23,7 +25,7 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://elisee:1234@localhost/ticketing_system_db_1'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SECRET_KEY'] = '4f3b2a5e6d7c9f1e8b3a7d5c2e9f4b1c6d8e3a7c5b9f2d1e4a3c7b5d9e8f6a2'
-
+    app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
     # Initialiser la base de données
     db.init_app(app)
 
@@ -61,7 +63,7 @@ def create_app():
         flash("Déconnexion réussie!", "success")
 
         # Rediriger vers la page d'accueil ou de connexion
-        return redirect(url_for('login'))
+        return redirect(url_for('home'))
     
     
     @app.route('/login', methods=['POST','GET'])
@@ -110,11 +112,9 @@ def create_app():
                         return jsonify({"access_token": token,"user_id":session['user_id'], "redirect": "/helper"})
                     
                 else:
-                    flash("Erreur lors de la récupération des informations utilisateur", "danger")
                     return jsonify({"error": "Erreur récupération utilisateur"}), 500
             else:
                 print("Identifiants invalides")
-                flash("Identifiants invalides", "danger")
                 return jsonify({"error": "Identifiants invalides"}), 401
       
         return render_template("login.html")
@@ -142,7 +142,7 @@ def create_app():
                 if new_password != confirm_password:
                     flash("Les mots de passe ne correspondent pas", "danger")
                     return redirect(url_for('my_profile'))
-                user.password = generate_password_hash(new_password)
+                user.password = bcrypt.hash(new_password)
 
             db.session.commit()
             flash("Profil mis à jour avec succès", "success")
