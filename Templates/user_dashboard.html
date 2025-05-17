@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Système de Tickets - Espace Utilisateur{% endblock %}
+{% block title %}Attrape ton ticket- Espace Utilisateur{% endblock %}
 
 {% block extra_css %}
 <link href="{{ url_for('static', filename='css/user.css') }}" rel="stylesheet">
@@ -16,10 +16,10 @@
                     <h5 class="mb-0"><i class="fas fa-tasks"></i> Menu</h5>
                 </div>
                 <div class="list-group list-group-flush">
-                    <a href="#tickets" class="list-group-item list-group-item-action active">
+                    <a href="" id="showAllTickets"  class="list-group-item list-group-item-action">
                         <i class="fas fa-ticket-alt"></i> Mes Tickets
                     </a>
-                    <a href="#new-ticket" class="list-group-item list-group-item-action">
+                    <a  href="#" id="btnShowNewTicket" class="list-group-item list-group-item-action">
                         <i class="fas fa-plus"></i> Nouveau Ticket
                     </a>
                 </div>
@@ -29,10 +29,7 @@
                 <div class="card-header">
                     <h5 class="mb-0"><i class="fas fa-filter"></i> Filtres</h5>
                 </div>
-                <div class="list-group list-group-flush">
-                    <a href="#tous" class="list-group-item list-group-item-action" id="showAllTickets">
-                        <i class="fas fa-list"></i> Tous les tickets
-                    </a>                 
+                <div class="list-group list-group-flush">                
                     <a href="#en-cours" class="list-group-item list-group-item-action" data-status="En cours">
                         <i class="fas fa-spinner fa-spin text-primary"></i> En cours
                     </a>
@@ -85,14 +82,14 @@
                     <h5 class="mb-0"><i class="fas fa-plus"></i> Nouveau Ticket</h5>
                 </div>
                 <div class="card-body">
-                    <form id="newTicketForm">
+                    <form id="newTicketForm" enctype="multipart/form-data">
                         <div class="mb-3">
                             <label for="subject" class="form-label">Sujet</label>
-                            <input type="text" class="form-control" id="subject" required>
+                            <input type="text" class="form-control"  name="subject" id="subject" required>
                         </div>
                         <div class="mb-3">
                             <label for="category" class="form-label">Catégorie</label>
-                            <select class="form-select" id="category" required>
+                            <select class="form-select" id="category" name="category" required>
                                 <option value="">Sélectionner une catégorie</option>
                                 <option value="1">Problème technique</option>
                                 <option value="2">Gestion de compte</option>
@@ -102,11 +99,11 @@
                         </div> 
                         <div class="mb-3">
                             <label for="description" class="form-label">Description</label>
-                            <textarea class="form-control" id="description" rows="4" required></textarea>
+                            <textarea class="form-control" name="description" id="description" rows="4" required></textarea>
                         </div>
                         <div class="mb-3">
                             <label for="attachments" class="form-label">Pièces jointes</label>
-                            <input type="file" class="form-control" id="attachments" accept="image/*" multiple>
+                            <input type="file" name="attachments" class="form-control" id="attachments" accept="image/*" multiple>
                             <div id="imagePreview" class="mt-2 d-flex flex-wrap gap-2"></div>
                             <small class="text-muted">Formats acceptés : .jpg, .jpeg, .png, .gif</small>
                         </div>

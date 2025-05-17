@@ -13,13 +13,39 @@ document.addEventListener('DOMContentLoaded', function() {
         currentUserId = localStorage.setItem("currentUserId",savedUserId);
     }
     
-    
+    const alerts = document.querySelectorAll('.alert');
+
+    alerts.forEach(alert => {
+      setTimeout(() => {
+        const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+        bsAlert.close();
+      }, 4000); 
+    });
+
+    const tbody = document.querySelector('tbody');
+
+    tbody.addEventListener('click', function (event) {
+        const chatButton = event.target.closest('.active-chat');
+        if (chatButton) {
+            const row = chatButton.closest('tr');
+            if (row) {
+                row.classList.remove('unread');
+            }
+
+            const ticketId = chatButton.getAttribute('data-ticket-id');
+            if (ticketId) {
+                markTicketAsRead(ticketId);
+            }
+        }
+    });
+
     showSection('tickets');
     loadUserTickets();
     setupEventListeners();
     window.openChat = openChat;
     window.closeChat = closeChat;
     window.viewTicket = viewTicket;
+    window.sendMessage = sendMessage;
 });
 
 
@@ -77,47 +103,52 @@ function showSection(sectionId) {
 }
 
 // Gestion des tickets
+const form = document.getElementById('newTicketForm');
 async function submitNewTicket(event) {
     event.preventDefault();
-    const token = sessionStorage.getItem('user_token')
-    
-    const formData = {
-        subject: document.getElementById('subject').value.trim(),
-        description: document.getElementById('description').value.trim(),
-        category: document.getElementById('category').value,
-    };
+    const token = sessionStorage.getItem('user_token');
+    const formData = new FormData(form);
+    let imageBase64 = null;
+
+
 
     try {
-        const response = await fetch('/api/tickets', {
+        const res = await fetch('/api/tickets', {
             method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-             },
-            body: JSON.stringify(formData)
+            headers: {'Authorization': `Bearer ${token}`},
+            body: formData
         });
         console.log(sessionStorage.getItem('user_token'));
-
-        const result = await response.json();
+        const data = await res.json();
+        console.log(data);
         
-        if (result.success) {
+        if (data.success) {
             // Stocker l'ID utilisateur dans le localStorage
             currentUserId = sessionStorage.getItem('user_id');
             localStorage.setItem('currentUserId', currentUserId);
             
             showNotification('Ticket créé avec succès!', 'success');
-            document.getElementById('newTicketForm').reset();
+            form.reset();
             document.getElementById('imagePreview').innerHTML = '';
             showSection('tickets');
             loadUserTickets();
         } else {
-            showNotification(result.error, 'danger');
+            showNotification(data.error || 'Erreur inconnue', 'danger');
         }
     } catch (error) {
+        console.log(error)
         showNotification('Erreur lors de la création du ticket', 'danger');
     }
 }
 
+function toBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file); // lit le fichier en base64
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+}
 
 async function getTokenFromSession() {
     try {
@@ -151,8 +182,8 @@ async function loadUserTickets() {
         const response = await fetch(`/api/tickets`, {
             method: "GET",
             headers: {
-                "Authorization": `Bearer ${token}`,
-                "Content-Type": "application/json"
+                "Authorization": `Bearer ${token}`
+                
             }
         });
         
@@ -207,7 +238,29 @@ function debounce(func, wait) {
     };
 }
 
+function showNewTicketForm() {
+    // On masque la liste des tickets
+    const ticketCard = document.querySelector('#userTicketsTable')?.closest('.card');
+    if (ticketCard) ticketCard.classList.add('d-none');
 
+    // On affiche le formulaire
+    const formCard = document.querySelector('#newTicketForm')?.closest('.card');
+    if (formCard) formCard.classList.remove('d-none');
+}
+
+
+document.getElementById('btnShowNewTicket')?.addEventListener('click', (e) => {
+    e.preventDefault(); 
+    showNewTicketForm();
+});
+document.getElementById('showAllTickets')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    const ticketCard = document.querySelector('#userTicketsTable')?.closest('.card');
+    const formCard = document.querySelector('#newTicketForm')?.closest('.card');
+
+    if (formCard) formCard.classList.add('d-none');
+    if (ticketCard) ticketCard.classList.remove('d-none');
+});
 
 
 
@@ -243,6 +296,12 @@ function displayTickets(tickets) {
         }
 
         const row = tbody.insertRow();
+
+        if (ticket.is_read === false) {
+            console.log(ticket.is_read)
+            row.classList.add('unread');
+        }
+
         row.innerHTML = `
             <td>${ticket.id || 'Anonyme'}</td>
             <td>${getStatusIcon(ticket.status)}${ticket.status}</td>
@@ -255,7 +314,7 @@ function displayTickets(tickets) {
                         <button class="action-btn active-view" onclick="viewTicket(${ticket.id})" title="Voir les détails">
                             <i class="fas fa-eye"></i>
                         </button>
-                        <button class="action-btn active-chat" onclick="openChat(${ticket.id})" title="Ouvrir le chat">
+                        <button class="action-btn active-chat" data-ticket-id="${ticket.id}" onclick="openChat(${ticket.id})" title="Ouvrir le chat">
                             <i class="fas fa-comment-dots"></i>
                         </button>
                     </div>
@@ -268,6 +327,15 @@ function displayTickets(tickets) {
                 `}
             </td>
         `;
+    });
+}
+
+function markTicketAsRead(ticketId) {
+    fetch(`/message/${ticketId}/mark-as-read/user`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        }
     });
 }
 
@@ -409,7 +477,7 @@ async function openChat(ticketId) {
         const ticket = await response.json();
         
         currentChatTicketId = ticketId;
-        document.getElementById('chatWidget').style.display = 'block';
+        document.getElementById('chatWidget').style.display = '';
         document.getElementById('chatTicketId').textContent = `Ticket de ${ticket.id}`;
         loadChatHistory(ticketId);
         //setupMessageChecking();
@@ -539,6 +607,7 @@ async function viewTicket(ticketId) {
         // Charger les messages du ticket
         const messagesResponse = await fetch(`/api/messages/${ticketId}`);
         const messages = await messagesResponse.json();
+        const imageHTML = ticket.image_path ? `<img src="${ticket.image_path}" alt="Image jointe" style="max-width: 100%; height: auto;" />` : '';
 
         const modalContent = `
             <div class="modal fade" id="viewTicketModal" tabindex="-1">
@@ -578,6 +647,10 @@ async function viewTicket(ticketId) {
                                 </div>
                             </div>
 
+                             <div class="ticket-image">
+                            ${imageHTML}
+                            </div>
+       
                             ${ticket.attachments ? `
                                 <div class="mt-3">
                                     <h6>Pièces jointes</h6>
@@ -592,22 +665,29 @@ async function viewTicket(ticketId) {
                                 </div>
                             ` : ''}
 
-                            ${messages && messages.length > 0 ? `
-                                <div class="mt-3">
-                                    <h6>Historique des échanges</h6>
-                                    <div class="conversation-history">
-                                        ${messages.map(msg => `
-                                            <div class="message ${msg.sender_type}-message">
-                                                <div class="message-header">
-                                                    <strong>${msg.sender_type === 'helper' ? 'Support' : 'Utilisateur'}</strong>
-                                                    <span class="text-muted">${msg.created_at}</span>
-                                                </div>
-                                                <div class="message-content">${msg.content.replace(/\n/g, '<br>')}</div>
-                                            </div>
-                                        `).join('')}
+                            ${messages.map(msg => {
+                                const isCurrentUser = String(msg.sender_id) === String(sessionStorage.getItem('user_id'));
+                                const alignmentClass = isCurrentUser ? 'h-message-right' : 'h-message-left';
+
+                                const senderLabel = isCurrentUser
+                                    ? 'Vous'
+                                    : msg.sender_type === 'helper'
+                                        ? 'Support'
+                                        : msg.sender_type === 'admin'
+                                            ? 'Admin'
+                                            : msg.username || 'Utilisateur';
+
+                                return `
+                                    <div class="message ${alignmentClass}">
+                                        <div class="message-header">
+                                            <strong>${senderLabel}</strong>
+                                            <span class="text-muted">${msg.created_at}</span>
+                                        </div>
+                                        <div class="message-content">${msg.content.replace(/\n/g, '<br>')}</div>
                                     </div>
-                                </div>
-                            ` : '<p class="text-muted">Aucun message dans l\'historique</p>'}
+                                `;
+                            }).join('')}
+
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>

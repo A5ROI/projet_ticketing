@@ -29,19 +29,20 @@ def create_access_token(data: dict):
 
 
 def get_current_user(token: str):
-    token = request.headers.get("Authorization")  # 🔹 Récupère le token depuis le header
     if not token:
-        return jsonify({"error": "Missing token"}), 401
+        return None
 
     try:
-        token = token.split(" ")[1]  # 🔹 Supprime "Bearer " du token
+        if token.startswith("Bearer "):
+            token = token.split(" ")[1]  # 🔹 Supprime "Bearer " du token
+        
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         
         user_id = payload.get("sub")
         role = payload.get("role")
 
         if not user_id or not role:
-            return jsonify({"error": "Invalid token"}), 401
+            return None
         
         # 🔹 Stocke dans session (utile si tu utilises Flask avec des templates HTML)
         session['user_token'] = token
@@ -49,13 +50,12 @@ def get_current_user(token: str):
         session['user_id'] = user_id
 
         return {
-            "id": user_id,
+            "id": int(user_id),
             "role": role,
             "session_user_id": session.get('user_id'),  # Vérifie si c'est stocké
             "session_user_role": session.get('user_role')
         }
     
-    except jwt.ExpiredSignatureError:
-        return jsonify({"error": "Token expired"}), 401
-    except jwt.InvalidTokenError:
-        return jsonify({"error": "Invalid token"}), 401
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+        return None
+    

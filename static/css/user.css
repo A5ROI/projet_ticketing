@@ -32,14 +32,43 @@ input#email.form-control{
     background-color: #dcf8c6;
     align-self: flex-end;
     text-align: right;
+    justify-self: flex-end;
 }
 
 .message-left {
     background-color: #f1f0f0;
     align-self: flex-start;
     text-align: left;
+    justify-self: flex-start;
 }
 
+.h-message-left {
+    background-color: #f1f0f0;
+    align-self: flex-start;
+    text-align: left;
+    max-width: 75%;
+    padding: 8px;
+    border-radius: 10px;
+    justify-self: flex-start;
+    margin: 10px 0;
+}
+
+.h-message-right {
+    background-color: #dcf8c6;
+    align-self: flex-end;
+    text-align: right;
+    max-width: 75%;
+    padding: 8px;
+    border-radius: 10px;
+    justify-self: flex-end;
+    margin: 10px 0;
+}
+
+
+.unread {
+    background-color: #fff8e1 !important; /* jaune pâle */
+    font-weight: bold;
+}
 /* Styles spécifiques à la page utilisateur */
 .user-container {
     margin-top: 20px;

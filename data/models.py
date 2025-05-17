@@ -1,4 +1,4 @@
-from data.database import db
+from data.database import db, Boolean
 from datetime import datetime
 import enum
 
@@ -37,6 +37,7 @@ class Ticket(db.Model):
     category_id = db.Column(db.Integer, db.ForeignKey('category.id'), nullable=False)
     creator = db.relationship('User', back_populates='tickets')
     category = db.relationship('Category', back_populates='tickets')
+    image_path = db.Column(db.String(255)) 
 
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -45,7 +46,7 @@ class Message(db.Model):
     content = db.Column(db.Text, nullable=False)
     sender_type = db.Column(db.String(50), nullable=False)  # 'user' ou 'helper'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
+    is_read = db.Column(Boolean, default=False)
     # Relations
     ticket = db.relationship('Ticket', back_populates='messages')
     sender = db.relationship('User', back_populates='messages')

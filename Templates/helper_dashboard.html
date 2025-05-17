@@ -15,7 +15,7 @@
                     <h5 class="mb-0"><i class="fas fa-filter"></i> Filtres</h5>
                 </div>
                     <div class="list-group list-group-flush">
-                        <button class="list-group-item list-group-item-action active" data-filter="all">
+                        <button class="list-group-item list-group-item-action" data-filter="all">
                             <i class="fas fa-ticket-alt"></i> Tous les tickets
                         </button>
                         <button class="list-group-item list-group-item-action text-warning" data-filter="En attente">
@@ -60,9 +60,11 @@
                             <i class="fas fa-search"></i>
                         </button>
                     </div>
+                    {% if session['user_role'] == 'Admin' %}
                     <button onclick="resetData()" class="btn btn-danger">
                         <i class="fas fa-trash-alt"></i> Réinitialiser les données
-                    </button>                    
+                    </button>  
+                    {%endif%}                  
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">

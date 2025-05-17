@@ -1,14 +1,13 @@
-from flask import jsonify, request, session
-from sqlalchemy import text
+from flask import jsonify, request, session, Flask
+from sqlalchemy import text, or_
 from datetime import datetime
-import random
-from sqlalchemy.orm import Session
 from data.database import *
-import json
 from pydantic import BaseModel
 from security import *
-import logging
-from data.models import Ticket, Category
+from data.models import Ticket, Category, Message
+import os, uuid, logging, base64, traceback
+from werkzeug.utils import secure_filename
+
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -21,6 +20,16 @@ class TicketCreate(BaseModel):
 def init_tickets_routes(app):
     @app.route('/api/tickets', methods=['POST'])
     def create_ticket():
+        subject = request.form.get('subject')
+        description = request.form.get('description')
+        category_id = request.form.get('category')
+        image_file = request.files.get('attachments')
+        print("subject:", subject)
+        print("description:", description)
+        print("category:", category_id)
+        print("image_file:", image_file)
+
+
         try:
             # ✅ Récupérer le token stocké en session
             token = session.get('user_token')
@@ -29,20 +38,27 @@ def init_tickets_routes(app):
                 return jsonify({"error": "Utilisateur non authentifié"}), 401
 
             current_user = get_current_user(token)  
+            
+            image_file = request.files.get('attachments') 
+            image_path = None
 
-            # Récupérer les données JSON envoyées
-            ticket_data = request.get_json()
-            if not ticket_data:
-                return jsonify({"error": "Données JSON manquantes"}), 400
-
+            if image_file:
+                filename = secure_filename(image_file.filename)
+                image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                image_file.save(image_path)
+                
+                
             # Créer un nouveau ticket
             new_ticket = Ticket(
-                subject=ticket_data['subject'],
-                description=ticket_data['description'],
+                subject=subject,
+                description=description,
                 priority='Basse',
-                created_by=current_user['id'],
-                category_id=ticket_data['category']
+                created_by=current_user['id'],  
+                category_id=category_id,
+                image_path=image_path
             )
+            
+
 
             db.session.add(new_ticket)
             db.session.commit()
@@ -51,6 +67,7 @@ def init_tickets_routes(app):
 
         except Exception as e:
             db.session.rollback()
+            print(str(e))
             return jsonify({"error": f"Erreur lors de la création du ticket : {str(e)}"}), 500
             
     @app.route('/api/tickets', methods=['GET'])
@@ -66,32 +83,62 @@ def init_tickets_routes(app):
             user = get_current_user(token)
             print(f"👤 Utilisateur connecté : {user}")
 
-            # Récupération des tickets selon le rôle
             if user['role'] == 'Client':
                 tickets = Ticket.query.filter_by(created_by=user['id']).all()
+                print(tickets)
             elif user['role'] == 'Helper':
-                user = User.query.get(user['id'])
-                tickets = Ticket.query.filter_by(category_id = user.category_id).all()
+                user_db = User.query.get(user['id'])
+                tickets = Ticket.query.filter_by(category_id = user_db.category_id).all()
                 print(f"✅ Tickets trouvés : {len(tickets)}")
             elif user['role'] == 'Admin':
                 tickets = Ticket.query.all()
 
-            tickets_list = [{
-                "id": ticket.id,
-                "subject": ticket.subject,
-                "category": ticket.category.name,
-                "priority": ticket.priority,
-                "status": ticket.status,
-                "created_at": ticket.created_at.strftime("%d/%m/%Y %H:%M"),
-                "username": ticket.creator.username if ticket.creator else "Anonyme"
-            } for ticket in tickets]
-            print(tickets)
+            tickets_list = []
+
+            for ticket in tickets:
+                try:
+                    
+                    if ticket.status != 'Fermé':
+                        if isinstance(user, dict):
+                            role = user['role']
+                        else:
+                            role = getattr(user, 'role', 'Client')
+                        if role == 'Client':
+                            sender_types_to_check = ['helper', 'admin']
+                        else:
+                            sender_types_to_check = ['user']   
+                        has_unread = db.session.query(Message).filter(
+                            Message.ticket_id == ticket.id,
+                            Message.sender_type.in_(sender_types_to_check),
+                            or_(
+                                Message.is_read == False,
+                                Message.is_read.is_(None)
+                            )
+                        ).first()
+                    else:
+                        has_unread=None
+
+                    tickets_list.append({
+                        "id": ticket.id,
+                        "subject": ticket.subject,
+                        "category": ticket.category.name if ticket.category else "Inconnue",
+                        "priority": ticket.priority,
+                        "status": ticket.status,
+                        "created_at": ticket.created_at.strftime("%d/%m/%Y %H:%M"),
+                        "username": ticket.creator.username if ticket.creator else "Anonyme",
+                        "is_read": False if has_unread else True
+                    })
+                    print(f"Ticket {ticket.id} has_unread = {bool(has_unread)}")
+                except Exception as e:
+                    print(f"⚠️ Erreur ticket {ticket.id}: {e}")
 
             return jsonify(tickets_list), 200
 
         except Exception as e:
+            print(traceback.format_exc())
             return jsonify({'error': f"Erreur : {str(e)}"}), 500
 
+    
     
     @app.route('/api/tickets/<int:id>', methods=['GET'])
     def get_ticket(id):
@@ -126,13 +173,11 @@ def init_tickets_routes(app):
             update_query = text("""
                 UPDATE ticket 
                                 SET priority = :priority, 
-                                status = :status
                 WHERE id = :id
             """)
             db.session.execute(update_query, {
                 'id': id,
                 'priority': data['priority'],
-                'status': data['status'],
             })
             db.session.commit()
             return jsonify({'success': True, 'message': 'Ticket mis à jour'})
@@ -140,6 +185,7 @@ def init_tickets_routes(app):
             db.session.rollback()
             return jsonify({'error': str(e)}), 500
     
+
     @app.route('/api/tickets/<int:id>', methods=['DELETE'])
     def delete_ticket(id):
         user = get_current_user()
@@ -155,6 +201,7 @@ def init_tickets_routes(app):
             db.session.rollback()
             return jsonify({'error': str(e)}), 500
     
+
     @app.route('/api/tickets/<int:id>/close', methods=['PATCH'])
     def close_ticket(id):
         token = session.get('user_token')

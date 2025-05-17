@@ -1,9 +1,11 @@
-from flask import jsonify, request
+from flask import jsonify, request, session
 from sqlalchemy import text
 from data.database import db
 from datetime import datetime
 import json
 from data.email_notifications import send_email
+from security import *
+
 
 def init_messages_routes(app):
     @app.route('/api/messages', methods=['POST'])
@@ -11,8 +13,8 @@ def init_messages_routes(app):
         try:
             data = request.json
             query = text("""
-                INSERT INTO message (ticket_id, sender_id, content, sender_type, created_at)
-                VALUES (:ticket_id, :sender_id, :content, 'user', NOW())
+                INSERT INTO message (ticket_id, sender_id, content, sender_type, created_at, is_read)
+                VALUES (:ticket_id, :sender_id, :content, 'user', NOW(), FALSE)
             """)
             
             db.session.execute(query, {
@@ -21,13 +23,6 @@ def init_messages_routes(app):
                 'content': data['content']
             })
             
-            # Mettre à jour le statut du ticket
-            status_query = text("""
-                UPDATE ticket 
-                SET status = 'En attente' 
-                WHERE id = :ticket_id
-            """)
-            db.session.execute(status_query, {'ticket_id': data['ticket_id']})
             
             db.session.commit()
             return jsonify({'success': True, 'message': 'Message envoyé'})
@@ -35,21 +30,70 @@ def init_messages_routes(app):
         except Exception as e:
             db.session.rollback()
             return jsonify({'error': str(e)}), 500
+    
+
+    @app.route('/message/<int:ticket_id>/mark-as-read', methods=['PUT'])
+    def mark_messages_as_read(ticket_id):
+        try:
+            query = text("""
+                UPDATE message
+                SET is_read = TRUE
+                WHERE ticket_id = :ticket_id
+                AND sender_type = IN ('helper', 'admin','user')'
+                AND is_read = FALSE
+            """)
+            db.session.execute(query, {'ticket_id': ticket_id})
+            db.session.commit()
+
+            return jsonify({'success': True, 'message': 'Messages marqués comme lus'})
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
+
+    @app.route('/message/<int:ticket_id>/mark-as-read/user', methods=['PUT'])
+    def mark_messages_as_read_user(ticket_id):
+        try:
+            query = text("""
+                UPDATE message
+                SET is_read = TRUE
+                WHERE ticket_id = :ticket_id
+                AND sender_type IN ('helper', 'admin')
+                AND is_read = FALSE
+            """)
+            db.session.execute(query, {'ticket_id': ticket_id})
+            db.session.commit()
+
+            return jsonify({'success': True, 'message': 'Messages marqués comme lus'})
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
+
 
     @app.route('/api/helper/messages', methods=['POST'])
     def send_helper_message():
+        token = session.get('user_token')
+
+        if not token:
+            return jsonify({'error': 'Token manquant'}), 401
+
+        user = get_current_user(token)
+        sender_type = user['role'].lower()
         try:
             data = request.json
             
             # Insérer le message avec l'ID du helper_admin existant
             query = text("""
-                INSERT INTO message (ticket_id, sender_id, content, sender_type, created_at)
-                VALUES (:ticket_id, 1, :content, 'helper', NOW())
+                INSERT INTO message (ticket_id, sender_id, content, sender_type, created_at, is_read)
+                VALUES (:ticket_id, :sender_id, :content, :sender_type, NOW(), FALSE)
             """)
             
             db.session.execute(query, {
                 'ticket_id': data['ticket_id'],
-                'content': data['content']
+                'content': data['content'],
+                'sender_id': data['sender_id'],
+                'sender_type': sender_type
             })
             
             # Mettre à jour le statut du ticket
@@ -84,8 +128,8 @@ def init_messages_routes(app):
                 'message': 'Message envoyé',
                 'data': {
                     'content': data['content'],
-                    'sender_type': 'helper',
-                    'sender_name': 'helper_admin',
+                    'sender_type': sender_type,
+                    'sender_name': sender_type,
                     'created_at': datetime.now().strftime('%d/%m/%Y %H:%M')
                 }
             })
@@ -124,11 +168,12 @@ def init_messages_routes(app):
                     'content': row.content,
                     'sender_type': row.sender_type,
                     'sender_id': row.sender_id,
-                    'sender_name': row.sender_name or 'helper_admin',
+                    'sender_name': row.sender_type,
                     'created_at': row.created_at,
-                    'isAdmin': row.sender_type == 'helper'
+                    'isAdmin': row.sender_type == 'admin',
+                    
                 })
-            
+            print(json.dumps(messages, indent=4))
             return jsonify(messages)
             
         except Exception as e:

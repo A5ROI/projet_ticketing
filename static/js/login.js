@@ -6,9 +6,37 @@ document.addEventListener('DOMContentLoaded', function() {
         const password = document.getElementById("password").value;
 
         login(email, password);  // Appelle la fonction login avec les valeurs du formulaire
-    });
+        const alerts = document.querySelectorAll('.alert');
+
+        alerts.forEach(alert => {
+        setTimeout(() => {
+            const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+            bsAlert.close();
+        }, 4000); 
+        });
+});
 });
 
+function showNotification(message, type = 'danger') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show text-center`;
+    alertDiv.role = 'alert';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+
+    const container = document.getElementById("notification-container");
+    if (container) {
+        container.appendChild(alertDiv);
+    } else {
+        document.body.prepend(alertDiv); // fallback si le conteneur n'existe pas
+    }
+
+    setTimeout(() => alertDiv.remove(), 4000); // disparition auto
+}
+
+ 
 
 function login(email, password) {
     // ✅ Supprime l'ancien token avant de se reconnecter
@@ -44,9 +72,14 @@ function login(email, password) {
             }
         } else {
             console.error("🚨 Erreur de connexion :", data.error || "Réponse invalide");
+            const errorMsg = data.error || "Email ou mot de passe incorrect.";
+            showNotification(errorMsg, 'danger');
         }
     })
-    .catch(error => console.error("❌ Erreur lors de la connexion :", error));
+    .catch(error => {
+        console.error("❌ Erreur lors de la connexion :", error); 
+        showNotification("Erreur réseau. Veuillez réessayer.", 'danger');
+    })
 }
 
 function redirectToLogin(event) {

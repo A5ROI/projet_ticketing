@@ -114,12 +114,14 @@
     background-color: #dcf8c6;
     align-self: flex-end;
     text-align: right;
+    justify-self: flex-end;
 }
 
 .message-left {
     background-color: #f1f0f0;
     align-self: flex-start;
     text-align: left;
+    justify-self: flex-start;
 }
 
 
@@ -134,6 +136,12 @@
     color: rgba(255, 255, 255, 0.8);
     text-align: right;
 }
+
+.unread {
+    background-color: #fff8e1 !important; /* jaune pâle */
+    font-weight: bold;
+}
+
 
 /* Sidebar styles */
 .list-group-item {
