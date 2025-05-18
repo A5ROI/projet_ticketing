@@ -73,31 +73,31 @@ def init_tickets_routes(app):
 
 
             for email in support_emails:
-                subject_email = f"Nouveau Ticket :<strong> {subject}</strong>"
+                subject_email = f"Nouveau Ticket : {subject}"
                 body_email = f"""
-                    <p>Bonjour,</p>
+                    Bonjour,
 
-                    <p>Un nouveau ticket a été créé dans votre catégorie.</p>
+                    Un nouveau ticket a été créé dans votre catégorie.
 
-                    <p><strong>Sujet:</strong> {subject}</p>
-                    <p><strong>Description:</strong> {description}</p>
-                    <p><strong>Priorité:</strong> Basse</p>
-                    <p><strong>Utilisateur:</strong> {current_user['username']}</p>
+                    Sujet: {subject}
+                    Description: {description}
+                    Priorité: Basse
+                    Utilisateur: {current_user['username']}
 
-                    <p>Merci de vous connecter à la plateforme pour le consulter.</p>
+                    Merci de vous connecter à la plateforme pour le consulter.
                 """
                 send_email(subject_email, email, body_email)
 
                 subject_user = "Confirmation de soumission de votre ticket"
                 body_user = f"""
-                    <p>Bonjour {current_user['username']},</p>
-                    <p>Votre ticket a bien été soumis avec les informations suivantes :</p>
-                    <p><strong>Sujet:</strong> {subject}</p>
-                    <p><strong>Description:</strong> {description}</p>
-                    <p><strong>Priorité:</strong> Basse</p>
-                    <p>Notre équipe va examiner votre demande dans les plus brefs délais.</p>
-                    <br>
-                    <p style="font-style: italic;">Attrape ton ticket </p>
+                    Bonjour {current_user['username']},
+                    Votre ticket a bien été soumis avec les informations suivantes :
+                    Sujet: {subject}
+                    Description: {description}
+                    Priorité: Basse
+                    Notre équipe va examiner votre demande dans les plus brefs délais.
+                    
+                    Attrape ton ticket 
                 """
                 print(user.email)
                 send_email(subject_user, user.email, body_user)

@@ -1,9 +1,9 @@
 from flask import Flask, render_template, redirect, url_for, request, session, flash
 from flask_migrate import Migrate
-from functools import wraps #ELISEE Ajouté pour login_required
+from functools import wraps
 import pymysql
 from data.database import db
-from passlib.hash import bcrypt  
+from passlib.hash import bcrypt
 from api.tickets import *
 from api.messages import init_messages_routes
 from api.reset import init_reset_routes
@@ -12,6 +12,7 @@ from security import *
 from data.email_notifications import *
 import requests
 from api.admin import *
+from werkzeug.security import check_password_hash
 
 
 FASTAPI_URL = "http://127.0.0.1:8000"  # Port de FastAPI
@@ -56,10 +57,8 @@ def create_app():
     
     @app.route('/logout')
     def logout():
-        # Supprimer toutes les informations de la session
         session.clear()
 
-        # Afficher un message de déconnexion
         flash("Déconnexion réussie!", "success")
 
         # Rediriger vers la page d'accueil ou de connexion
@@ -73,15 +72,45 @@ def create_app():
             email = request.form['email']
             password = request.form['password']
             print("Request form data:", request.form)  # Affiche les données envoyées
-
-        # Envoyer les données à FastAPI
-            response = requests.post(f"{FASTAPI_URL}/login", json={"email": email, "password": password})
-            print("Réponse FastAPI:", response.status_code)  # Affiche le code de statut HTTP
-            print("Réponse du serveur:", response.text)  #
             session.clear()
+        
+            """ response = requests.post(f"{FASTAPI_URL}/login", json={"email": email, "password": password})
+                print("Réponse FastAPI:", response.status_code)  # Affiche le code de statut HTTP
+                print("Réponse du serveur:", response.text)  # """
+            try:
 
+                user = User.query.filter_by(email=email).first()
 
-            if response.status_code == 200:
+                if user and bcrypt.verify(password, user.password):
+
+                    token_data={
+                        "sub": str(user.id),
+                        "role": user.role,
+                        "username": user.username
+                    }
+                    token = create_access_token(token_data)
+
+                    session['user_token'] = token
+                    session['user_id'] = user.id
+                    session['user_role'] = user.role
+
+                    flash("Connexion réussie!", "success")
+                    redirect_url = "/user" if user.role == 'Client' else "/helper"
+
+                    return jsonify({
+                    "access_token": token,
+                    "user_id": user.id,
+                    "redirect": redirect_url
+                    })
+
+                else:
+                    flash("Email ou mot de passe incorrect", "danger")
+                    return jsonify({"error": "Identifiants invalides"}), 401
+            except Exception as e:
+                print("Erreur login:", e)
+                return jsonify({"error": "Erreur interne"}), 500
+
+            """if response.status_code == 200:
                 data = response.json()
                 token = data["access_token"]
                 session['user_token'] = token  # ✅ Stocke le token dans la session
@@ -115,7 +144,7 @@ def create_app():
                     return jsonify({"error": "Erreur récupération utilisateur"}), 500
             else:
                 print("Identifiants invalides")
-                return jsonify({"error": "Identifiants invalides"}), 401
+                return jsonify({"error": "Identifiants invalides"}), 401"""
       
         return render_template("login.html")
 
@@ -159,32 +188,44 @@ def create_app():
             return jsonify({"error": "Aucun token trouvé"}), 401
         return jsonify({"token": token})
 
-    @app.route('/register', methods=['POST', 'GET'])
+    @app.route('/register', methods=['POST','GET'])
     def register():
         if request.method == "POST":
             username = request.form['username']
             email = request.form['email']
             password = request.form['password']
-            role = "Client"  # Ou un autre rôle par défaut
+            role = "Client"
 
-            # Envoyer les données à FastAPI
-            response = requests.post(f"{FASTAPI_URL}/register", json={
-                "username": username,
-                "email": email,
-                "password": password,
-                "role": role
-            })
+            existing_user = User.query.filter_by(email=email).first()
 
-            if response.status_code == 200:
-                # Envoie l'email de confirmation
+            if existing_user:
+                 flash("Un compte avec cet email existe déjà.", "danger")
+                 return redirect(url_for('register'))
+            
+            hashed_password = bcrypt.hash(password)
+                        
+            new_user = User(
+                username=username,
+                email=email,
+                password=hashed_password,
+                role=role
+            )
+
+            try:
+                db.session.add(new_user)
+                db.session.commit()
+
                 subject = "Bienvenue sur notre plateforme"
                 body = f"Bonjour {username},\n\nVotre compte a été créé avec succès. Vous pouvez maintenant vous connecter."
-                send_email(subject, email, body)  # Appel de la fonction pour envoyer un email
+                send_email(subject, email, body)  
 
                 flash("Compte créé avec succès ! Vous pouvez maintenant vous connecter.", "success")
                 return redirect(url_for('login'))
-            else:
-                flash("Erreur lors de l'inscription", "danger")
+            
+            except Exception as e:
+                db.session.rollback()
+                print("Erreur lors de la création de l'utilisateur :", e)
+                flash("Erreur lors de l'inscription, veuillez réessayer.", "danger")
 
             
         return render_template('register.html')

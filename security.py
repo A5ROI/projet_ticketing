@@ -34,7 +34,7 @@ def get_current_user(token: str):
 
     try:
         if token.startswith("Bearer "):
-            token = token.split(" ")[1]  # 🔹 Supprime "Bearer " du token
+            token = token.split(" ")[1]  
         
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         
