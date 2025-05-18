@@ -15,7 +15,6 @@ from api.admin import *
 from werkzeug.security import check_password_hash
 
 
-FASTAPI_URL = "http://127.0.0.1:8000"  # Port de FastAPI
 UPLOAD_FOLDER = "static/uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -61,7 +60,6 @@ def create_app():
 
         flash("Déconnexion réussie!", "success")
 
-        # Rediriger vers la page d'accueil ou de connexion
         return redirect(url_for('home'))
     
     
@@ -110,41 +108,7 @@ def create_app():
                 print("Erreur login:", e)
                 return jsonify({"error": "Erreur interne"}), 500
 
-            """if response.status_code == 200:
-                data = response.json()
-                token = data["access_token"]
-                session['user_token'] = token  # ✅ Stocke le token dans la session
-                headers = {"Authorization": f"Bearer {token}"}
-                user_response = requests.get(f"{FASTAPI_URL}/me", headers=headers)
-                print(f"Réponse JSON de FastAPI: {data}")  # Affiche la réponse JSON reçue
-
-                if user_response.status_code == 200:
-                    user_data = user_response.json()
-                    session['user_id'] = user_data.get("id")  
-                    session['user_role'] = user_data.get("role")
-
-                    print("Token stocké en session:", session.get('user_token'))
-                    print("ID utilisateur en session:", session.get('user_id'))
-                    print("Rôle utilisateur en session:", session.get('user_role'))
-
-                
-
-                    flash("Connexion réussie!", "success")
-
-                    if session['user_role'] == 'Client':
-                        return jsonify({"access_token": token,"user_id":session['user_id'], "redirect": "/user"})
-                    
-                    elif session['user_role'] == 'Helper':
-                        return jsonify({"access_token": token,"user_id":session['user_id'], "redirect": "/helper"})
-                    
-                    elif session['user_role'] == 'Admin':
-                        return jsonify({"access_token": token,"user_id":session['user_id'], "redirect": "/helper"})
-                    
-                else:
-                    return jsonify({"error": "Erreur récupération utilisateur"}), 500
-            else:
-                print("Identifiants invalides")
-                return jsonify({"error": "Identifiants invalides"}), 401"""
+            
       
         return render_template("login.html")
 
