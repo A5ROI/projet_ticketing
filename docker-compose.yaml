@@ -1,0 +1,28 @@
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=elisee
+      - DB_PASSWORD=1234
+      - DB_NAME=ticketing_system_db_1
+    volumes:
+      - .:/projet_ticketing
+
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 1234
+      MYSQL_DATABASE: ticketing_system_db_1
+    volumes:
+      - db_data:/var/lib/mysql
+
+volumes:
+  db_data:

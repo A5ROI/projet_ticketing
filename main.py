@@ -1,9 +1,9 @@
 from flask import Flask, render_template, redirect, url_for, request, session, flash
 from flask_migrate import Migrate
-from functools import wraps #ELISEE Ajouté pour login_required
+from functools import wraps
 import pymysql
 from data.database import db
-from passlib.hash import bcrypt  
+from passlib.hash import bcrypt
 from api.tickets import *
 from api.messages import init_messages_routes
 from api.reset import init_reset_routes
@@ -12,9 +12,9 @@ from security import *
 from data.email_notifications import *
 import requests
 from api.admin import *
+from werkzeug.security import check_password_hash
 
 
-FASTAPI_URL = "http://127.0.0.1:8000"  # Port de FastAPI
 UPLOAD_FOLDER = "static/uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -22,7 +22,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def create_app():
 
     app = Flask(__name__)
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://elisee:1234@localhost/ticketing_system_db_1'
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://elisee:1234@host.docker.internal/ticketing_system_db_1'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SECRET_KEY'] = '4f3b2a5e6d7c9f1e8b3a7d5c2e9f4b1c6d8e3a7c5b9f2d1e4a3c7b5d9e8f6a2'
     app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -56,13 +56,10 @@ def create_app():
     
     @app.route('/logout')
     def logout():
-        # Supprimer toutes les informations de la session
         session.clear()
 
-        # Afficher un message de déconnexion
         flash("Déconnexion réussie!", "success")
 
-        # Rediriger vers la page d'accueil ou de connexion
         return redirect(url_for('home'))
     
     
@@ -73,49 +70,44 @@ def create_app():
             email = request.form['email']
             password = request.form['password']
             print("Request form data:", request.form)  # Affiche les données envoyées
-
-        # Envoyer les données à FastAPI
-            response = requests.post(f"{FASTAPI_URL}/login", json={"email": email, "password": password})
-            print("Réponse FastAPI:", response.status_code)  # Affiche le code de statut HTTP
-            print("Réponse du serveur:", response.text)  #
             session.clear()
+        
+            """ response = requests.post(f"{FASTAPI_URL}/login", json={"email": email, "password": password})
+                print("Réponse FastAPI:", response.status_code)  # Affiche le code de statut HTTP
+                print("Réponse du serveur:", response.text)  # """
+            try:
 
+                user = User.query.filter_by(email=email).first()
 
-            if response.status_code == 200:
-                data = response.json()
-                token = data["access_token"]
-                session['user_token'] = token  # ✅ Stocke le token dans la session
-                headers = {"Authorization": f"Bearer {token}"}
-                user_response = requests.get(f"{FASTAPI_URL}/me", headers=headers)
-                print(f"Réponse JSON de FastAPI: {data}")  # Affiche la réponse JSON reçue
+                if user and bcrypt.verify(password, user.password):
 
-                if user_response.status_code == 200:
-                    user_data = user_response.json()
-                    session['user_id'] = user_data.get("id")  
-                    session['user_role'] = user_data.get("role")
+                    token_data={
+                        "sub": str(user.id),
+                        "role": user.role,
+                        "username": user.username
+                    }
+                    token = create_access_token(token_data)
 
-                    print("Token stocké en session:", session.get('user_token'))
-                    print("ID utilisateur en session:", session.get('user_id'))
-                    print("Rôle utilisateur en session:", session.get('user_role'))
-
-                
+                    session['user_token'] = token
+                    session['user_id'] = user.id
+                    session['user_role'] = user.role
 
                     flash("Connexion réussie!", "success")
+                    redirect_url = "/user" if user.role == 'Client' else "/helper"
 
-                    if session['user_role'] == 'Client':
-                        return jsonify({"access_token": token,"user_id":session['user_id'], "redirect": "/user"})
-                    
-                    elif session['user_role'] == 'Helper':
-                        return jsonify({"access_token": token,"user_id":session['user_id'], "redirect": "/helper"})
-                    
-                    elif session['user_role'] == 'Admin':
-                        return jsonify({"access_token": token,"user_id":session['user_id'], "redirect": "/helper"})
-                    
+                    return jsonify({
+                    "access_token": token,
+                    "user_id": user.id,
+                    "redirect": redirect_url
+                    })
+
                 else:
-                    return jsonify({"error": "Erreur récupération utilisateur"}), 500
-            else:
-                print("Identifiants invalides")
-                return jsonify({"error": "Identifiants invalides"}), 401
+                    flash("Email ou mot de passe incorrect", "danger")
+                    return jsonify({"error": "Identifiants invalides"}), 401
+            except Exception as e:
+                print("Erreur login:", e)
+                return jsonify({"error": "Erreur serveur", "details": str(e)}), 500
+            
       
         return render_template("login.html")
 
@@ -159,32 +151,44 @@ def create_app():
             return jsonify({"error": "Aucun token trouvé"}), 401
         return jsonify({"token": token})
 
-    @app.route('/register', methods=['POST', 'GET'])
+    @app.route('/register', methods=['POST','GET'])
     def register():
         if request.method == "POST":
             username = request.form['username']
             email = request.form['email']
             password = request.form['password']
-            role = "Client"  # Ou un autre rôle par défaut
+            role = "Client"
 
-            # Envoyer les données à FastAPI
-            response = requests.post(f"{FASTAPI_URL}/register", json={
-                "username": username,
-                "email": email,
-                "password": password,
-                "role": role
-            })
+            existing_user = User.query.filter_by(email=email).first()
 
-            if response.status_code == 200:
-                # Envoie l'email de confirmation
+            if existing_user:
+                 flash("Un compte avec cet email existe déjà.", "danger")
+                 return redirect(url_for('register'))
+            
+            hashed_password = bcrypt.hash(password)
+                        
+            new_user = User(
+                username=username,
+                email=email,
+                password=hashed_password,
+                role=role
+            )
+
+            try:
+                db.session.add(new_user)
+                db.session.commit()
+
                 subject = "Bienvenue sur notre plateforme"
                 body = f"Bonjour {username},\n\nVotre compte a été créé avec succès. Vous pouvez maintenant vous connecter."
-                send_email(subject, email, body)  # Appel de la fonction pour envoyer un email
+                send_email(subject, email, body)  
 
                 flash("Compte créé avec succès ! Vous pouvez maintenant vous connecter.", "success")
                 return redirect(url_for('login'))
-            else:
-                flash("Erreur lors de l'inscription", "danger")
+            
+            except Exception as e:
+                db.session.rollback()
+                print("Erreur lors de la création de l'utilisateur :", e)
+                flash("Erreur lors de l'inscription, veuillez réessayer.", "danger")
 
             
         return render_template('register.html')
@@ -202,4 +206,4 @@ def create_app():
 
 if __name__ == '__main__':
     app= create_app()
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)

@@ -7,6 +7,7 @@ from security import *
 from data.models import Ticket, Category, Message
 import os, uuid, logging, base64, traceback
 from werkzeug.utils import secure_filename
+from data.email_notifications import send_email
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -37,7 +38,8 @@ def init_tickets_routes(app):
             if not token:
                 return jsonify({"error": "Utilisateur non authentifié"}), 401
 
-            current_user = get_current_user(token)  
+            current_user = get_current_user(token)
+            user = User.query.get(current_user['id'])  
             
             image_file = request.files.get('attachments') 
             image_path = None
@@ -62,6 +64,43 @@ def init_tickets_routes(app):
 
             db.session.add(new_ticket)
             db.session.commit()
+
+            helper_query = User.query.filter(
+                    User.role == 'Helper',
+                    User.category_id == category_id
+                ).all()
+            support_emails = [row.email for row in helper_query]
+
+
+            for email in support_emails:
+                subject_email = f"Nouveau Ticket : {subject}"
+                body_email = f"""
+                    Bonjour,
+
+                    Un nouveau ticket a été créé dans votre catégorie.
+
+                    Sujet: {subject}
+                    Description: {description}
+                    Priorité: Basse
+                    Utilisateur: {current_user['username']}
+
+                    Merci de vous connecter à la plateforme pour le consulter.
+                """
+                send_email(subject_email, email, body_email)
+
+                subject_user = "Confirmation de soumission de votre ticket"
+                body_user = f"""
+                    Bonjour {current_user['username']},
+                    Votre ticket a bien été soumis avec les informations suivantes :
+                    Sujet: {subject}
+                    Description: {description}
+                    Priorité: Basse
+                    Notre équipe va examiner votre demande dans les plus brefs délais.
+                    
+                    Attrape ton ticket 
+                """
+                print(user.email)
+                send_email(subject_user, user.email, body_user)
 
             return jsonify({"success": True, "message": "Ticket créé avec succès"}), 201
 

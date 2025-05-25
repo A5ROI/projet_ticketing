@@ -83,7 +83,6 @@ def init_messages_routes(app):
         try:
             data = request.json
             
-            # Insérer le message avec l'ID du helper_admin existant
             query = text("""
                 INSERT INTO message (ticket_id, sender_id, content, sender_type, created_at, is_read)
                 VALUES (:ticket_id, :sender_id, :content, :sender_type, NOW(), FALSE)
@@ -96,7 +95,6 @@ def init_messages_routes(app):
                 'sender_type': sender_type
             })
             
-            # Mettre à jour le statut du ticket
             status_query = text("""
                 UPDATE ticket 
                 SET status = 'En cours' 
@@ -122,7 +120,6 @@ def init_messages_routes(app):
                 
             db.session.commit()
 
-            # Retourner les données du message pour mise à jour immédiate
             return jsonify({
                 'success': True,
                 'message': 'Message envoyé',
@@ -141,7 +138,6 @@ def init_messages_routes(app):
 
 
 
-    # Route pour récupérer les messages
     @app.route('/api/messages/<int:ticket_id>', methods=['GET'])
     def get_chat_history(ticket_id):
         try:
