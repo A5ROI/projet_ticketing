@@ -273,7 +273,6 @@ async function closeTicket() {
         console.log(error)
     }
 }
-// Fonctions d'affichage et UI
 function updateTicketsTable(tickets) {
     const tbody = document.querySelector('#helperTicketsTable tbody');
     tbody.innerHTML = '';
@@ -384,13 +383,10 @@ async function openResponseModal(ticketId) {
     }
 
     try {
-        // Charger d'abord les détails du ticket
         await loadTicketDetails(ticketId);
         
-        // Charger les messages avant d'afficher le modal
         await loadTicketMessages(ticketId);
         
-        // Afficher le modal une fois que tout est chargé
         const modal = new bootstrap.Modal(responseModal);
         modal.show();
     } catch (error) {

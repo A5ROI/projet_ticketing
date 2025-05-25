@@ -9,7 +9,6 @@ const categoryGroup = document.getElementById('category-group');
         }
     });
 
-    // Pour l'initialisation au chargement de la page
     window.addEventListener('DOMContentLoaded', () => {
         if (roleSelect.value === 'Helper') {
             categoryGroup.style.display = 'block';

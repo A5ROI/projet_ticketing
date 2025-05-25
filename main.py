@@ -22,7 +22,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def create_app():
 
     app = Flask(__name__)
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://elisee:1234@localhost/ticketing_system_db_1'
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://elisee:1234@host.docker.internal/ticketing_system_db_1'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SECRET_KEY'] = '4f3b2a5e6d7c9f1e8b3a7d5c2e9f4b1c6d8e3a7c5b9f2d1e4a3c7b5d9e8f6a2'
     app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -106,8 +106,7 @@ def create_app():
                     return jsonify({"error": "Identifiants invalides"}), 401
             except Exception as e:
                 print("Erreur login:", e)
-                return jsonify({"error": "Erreur interne"}), 500
-
+                return jsonify({"error": "Erreur serveur", "details": str(e)}), 500
             
       
         return render_template("login.html")
@@ -207,4 +206,4 @@ def create_app():
 
 if __name__ == '__main__':
     app= create_app()
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)

@@ -5,7 +5,7 @@ from sqlalchemy_utils import database_exists, create_database
 
 
 
-DATABASE_URL = "mysql+pymysql://elisee:1234@localhost/ticketing_system_db_1"
+DATABASE_URL = "mysql+pymysql://elisee:1234@host.docker.internal/ticketing_system_db_1"
 
 engine = create_engine(DATABASE_URL)
 

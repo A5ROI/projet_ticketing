@@ -1,6 +1,6 @@
 from passlib.hash import bcrypt 
 from datetime import datetime, timedelta
-import jwt
+import jwt as pyjwt
 from flask import request, session, jsonify
 from fastapi import Depends,HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -24,7 +24,7 @@ def create_access_token(data: dict):
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = pyjwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 
@@ -36,7 +36,7 @@ def get_current_user(token: str):
         if token.startswith("Bearer "):
             token = token.split(" ")[1]  
         
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = pyjwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         
         user_id = payload.get("sub")
         role = payload.get("role")
@@ -59,6 +59,6 @@ def get_current_user(token: str):
             "username": session.get('username'),
         }
     
-    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+    except (pyjwt.ExpiredSignatureError, pyjwt.InvalidTokenError):
         return None
     
