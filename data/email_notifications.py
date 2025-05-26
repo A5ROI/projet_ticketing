@@ -70,12 +70,12 @@ def create_helper_user(username, email, role, category_id):
     email_body = f"""
     Bonjour {username},
     
-    Votre compte Helper a été créé avec succès.
+    Votre compte a été créé avec succès.
     Voici votre mot de passe temporaire : {password}
     
     Veuillez vous connecter et changer votre mot de passe dès que possible.
     
-    Lien de connexion : http://127.0.0.1:5000/update-password
+    Lien de connexion : http://127.0.0.1:5000/login
     
     Cordialement,
     L'équipe de gestion des utilisateurs.
@@ -93,7 +93,7 @@ def send_reset_password(user):
     user.password = bcrypt.hash(temp_password)
     db.session.commit()
 
-    token = serializer.dumps(user.email, salt='reset-password')# Créer un token pour réinitialiser le mot de passe
+    token = serializer.dumps(user.email, salt='reset-password')
     reset_url = url_for('update_password', token=token, _external=True)
     
     

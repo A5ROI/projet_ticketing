@@ -17,17 +17,20 @@ from werkzeug.security import check_password_hash
 
 UPLOAD_FOLDER = "static/uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
+app = Flask(__name__)
 
 def create_app():
 
     app = Flask(__name__)
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://elisee:1234@host.docker.internal/ticketing_system_db_1'
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://elisee:a0u3mIs81CFQ11daiCmnioM55vWxaMOW@dpg-d0pmk56mcj7s73eaupd0-a.frankfurt-postgres.render.com/ticketing_zng0'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SECRET_KEY'] = '4f3b2a5e6d7c9f1e8b3a7d5c2e9f4b1c6d8e3a7c5b9f2d1e4a3c7b5d9e8f6a2'
     app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
     # Initialiser la base de données
     db.init_app(app)
+    
+    with app.app_context():
+        db.create_all()  # Crée les tables
 
     Migrate(app, db)  # Ajout de Flask-Migrate
 

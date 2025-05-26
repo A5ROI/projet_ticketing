@@ -188,9 +188,9 @@ def init_tickets_routes(app):
         
         try:
             query = text("""
-                         SELECT ticket.*, user.username 
+                         SELECT ticket.*, "user".username 
                             FROM ticket
-                            JOIN user ON ticket.created_by = user.id
+                            JOIN "user" ON ticket.created_by = "user".id
                          WHERE ticket.id = :id
                          """)
             result = db.session.execute(query, {'id': id}).mappings().fetchone()
@@ -198,6 +198,7 @@ def init_tickets_routes(app):
                 return jsonify({'error': 'Ticket not found'}), 404
             return jsonify(dict(result))
         except Exception as e:
+            print(str(e))
             return jsonify({'error': str(e)}), 500
     
     @app.route('/api/tickets/<int:id>', methods=['PUT'])

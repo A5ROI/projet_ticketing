@@ -7,11 +7,11 @@ services:
     depends_on:
       - db
     environment:
-      - DB_HOST=db
-      - DB_PORT=3306
+      - DB_HOST=dpg-d0pmk56mcj7s73eaupd0-a
+      - DB_PORT=5432
       - DB_USER=elisee
-      - DB_PASSWORD=1234
-      - DB_NAME=ticketing_system_db_1
+      - DB_PASSWORD=a0u3mIs81CFQ11daiCmnioM55vWxaMOW
+      - DB_NAME=ticketing_zng0
     volumes:
       - .:/projet_ticketing
 
@@ -19,8 +19,8 @@ services:
     image: mysql:8.0
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: 1234
-      MYSQL_DATABASE: ticketing_system_db_1
+      MYSQL_ROOT_PASSWORD: a0u3mIs81CFQ11daiCmnioM55vWxaMOW
+      MYSQL_DATABASE: ticketing_zng0
     volumes:
       - db_data:/var/lib/mysql
 
