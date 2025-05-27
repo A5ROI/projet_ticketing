@@ -40,32 +40,43 @@
                     <a href="{{ url_for('send_reset_email', user_id=user.id) }}" class="btn btn-sm btn-warning">
                         Reset MDP
                     </a>
+
+                   <button type="button"
+                          class="btn btn-sm btn-danger delete-btn"
+                          data-user-id="{{ user.id }}"
+                          data-username="{{ user.username }}">
+                      Supprimer
+                  </button>
+
+
                 </td>
             </tr>
-    
-            <!-- Modale Bootstrap avec les détails utilisateur -->
-            <div class="modal fade" id="userModal{{ user.id }}" tabindex="-1" aria-labelledby="userModalLabel{{ user.id }}" aria-hidden="true">
-              <div class="modal-dialog">
-                <div class="modal-content">
-                  <div class="modal-header">
-                    <h5 class="modal-title" id="userModalLabel{{ user.id }}">Détails de {{ user.username }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-                  </div>
-                  <div class="modal-body text-start">
-                    <p><strong>Email :</strong> {{ user.email }}</p>
-                    <p><strong>Rôle :</strong> {{ user.role }}</p>
-                    <p><strong>Catégorie :</strong> {{ user.category_id }}</p>
-                    <p><strong>Créé le :</strong> {{ user.created_at.strftime('%d/%m/%Y') }}</p>
-                  </div>
-                  <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
-                  </div>
-                </div>
-              </div>
-            </div>
+
             {% endfor %}
         </tbody>
     </table>
-    
+<!-- Modale de confirmation (à mettre UNE SEULE FOIS après le tableau, hors de la boucle) -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmDeleteLabel">Confirmation de suppression</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body" id="confirmDeleteBody">
+        Êtes-vous sûr de vouloir supprimer cet utilisateur ?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Confirmer</button>
+      </div>
+    </div>
+  </div>
 </div>
+
+</div>
+{% endblock %}
+{% block list_users_js %}
+    <script src="{{ url_for('static', filename='js/list_users.js') }}">
+    </script>
 {% endblock %}

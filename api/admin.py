@@ -1,4 +1,4 @@
-from flask import request, render_template, flash, redirect, url_for
+from flask import request, render_template, flash, redirect, url_for, jsonify
 from data.models import *
 from data.email_notifications import *
 from passlib.hash import bcrypt
@@ -19,7 +19,7 @@ def register_routes(app):
             username = request.form['username']
             email = request.form['email']
             role = request.form['role']
-            category_id = request.form['category_id']
+            category_id = request.form.get('category_id') if role == 'Helper' else None
         
             try:
                 create_helper_user(username, email, role, category_id)
@@ -27,9 +27,21 @@ def register_routes(app):
                 return redirect(url_for('list_users'))
             except Exception as e:
                 flash(f"Erreur : {e}", "danger")
+                print(f"Erreur : {e}", "danger")
     
         return render_template('create_user.html')
     
+
+    @app.route('/users/<int:user_id>', methods=['DELETE'])
+    def delete_user_api(user_id):
+        user = User.query.get_or_404(user_id)
+        try:
+            db.session.delete(user)
+            db.session.commit()
+            return jsonify({'message': 'Utilisateur supprimé avec succès'}), 200
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': f'Erreur lors de la suppression : {str(e)}'}), 500
 
     @app.route('/user/<int:user_id>/tickets')
     def user_tickets(user_id):

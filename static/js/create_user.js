@@ -1,18 +1,21 @@
-const roleSelect = document.getElementById('role');
-const categoryGroup = document.getElementById('category-group');
+document.addEventListener('DOMContentLoaded', () => {
+    const roleSelect = document.getElementById('role');
+    const categoryGroup = document.getElementById('category-group');
 
-    roleSelect.addEventListener('change', function () {
-        if (this.value === 'Helper') {
-            categoryGroup.style.display = 'block';
-        } else {
-            categoryGroup.style.display = 'none';
-        }
-    });
-
-    window.addEventListener('DOMContentLoaded', () => {
+    function toggleCategory() {
         if (roleSelect.value === 'Helper') {
-            categoryGroup.style.display = 'block';
+            categoryGroup.style.display = 'flex';
+            console.log('Affiche categoryGroup');
         } else {
             categoryGroup.style.display = 'none';
+            console.log('Cache categoryGroup');
         }
-    });
+    }
+
+    roleSelect.addEventListener('change', toggleCategory);
+    toggleCategory();  // pour initialiser l'état au chargement
+    console.log('create_user.js chargé');
+
+});
+console.log('create_user.js chargé');
+
