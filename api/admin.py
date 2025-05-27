@@ -41,6 +41,7 @@ def register_routes(app):
             return jsonify({'message': 'Utilisateur supprimé avec succès'}), 200
         except Exception as e:
             db.session.rollback()
+            print(str(e))
             return jsonify({'error': f'Erreur lors de la suppression : {str(e)}'}), 500
 
     @app.route('/user/<int:user_id>/tickets')
