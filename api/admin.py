@@ -32,18 +32,6 @@ def register_routes(app):
         return render_template('create_user.html')
     
 
-    @app.route('/users/<int:user_id>', methods=['DELETE'])
-    def delete_user_api(user_id):
-        user = User.query.get_or_404(user_id)
-        try:
-            db.session.delete(user)
-            db.session.commit()
-            return jsonify({'message': 'Utilisateur supprimé avec succès'}), 200
-        except Exception as e:
-            db.session.rollback()
-            print(str(e))
-            return jsonify({'error': f'Erreur lors de la suppression : {str(e)}'}), 500
-
     @app.route('/user/<int:user_id>/tickets')
     def user_tickets(user_id):
         user = User.query.get_or_404(user_id)
