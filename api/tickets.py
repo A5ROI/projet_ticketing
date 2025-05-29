@@ -212,7 +212,7 @@ def init_tickets_routes(app):
             data = request.json
             update_query = text("""
                 UPDATE ticket 
-                                SET priority = :priority, 
+                                SET priority = :priority 
                 WHERE id = :id
             """)
             db.session.execute(update_query, {
