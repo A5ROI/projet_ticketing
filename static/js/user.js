@@ -568,32 +568,7 @@ function setupEventListeners() {
 }
 
 let checkMessagesInterval;
-/*
-function setupMessageChecking() {
-    if (currentChatTicketId) {
-        // Arrêter l'intervalle précédent s'il existe
-        if (checkMessagesInterval) {
-            clearInterval(checkMessagesInterval);
-        }
 
-        // Vérifier les nouveaux messages toutes les 5 secondes
-        checkMessagesInterval = setInterval(async () => {
-            try {
-                const response = await fetch(`/api/messages/check-new/${currentChatTicketId}`);
-                const data = await response.json();
-                
-                if (data.hasNew && data.message.sender_type === 'helper') {
-                    // Mettre à jour le chat
-                    await loadChatHistory(currentChatTicketId);
-                    showNotification('Nouveau message du support !', 'info');
-                }
-            } catch (error) {
-                console.error('Erreur lors de la vérification des messages:', error);
-            }
-        }, 5000);
-    }
-}
-*/
 
 async function viewTicket(ticketId) {
     try {
