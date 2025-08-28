@@ -5,7 +5,7 @@ from sqlalchemy_utils import database_exists, create_database
 
 
 
-DATABASE_URL = "postgresql://elisee:a0u3mIs81CFQ11daiCmnioM55vWxaMOW@dpg-d0pmk56mcj7s73eaupd0-a.frankfurt-postgres.render.com/ticketing_zng0"
+DATABASE_URL = "postgresql://ticketing_xvoq_user:8qkPANbuhRWe0gLi78Kvjb1wAhz89Hdu@dpg-d2mpcq6r433s73avghb0-a.frankfurt-postgres.render.com/ticketing_xvoq"
 
 engine = create_engine(DATABASE_URL)
 

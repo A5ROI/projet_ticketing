@@ -22,7 +22,7 @@ app = Flask(__name__)
 def create_app():
 
     app = Flask(__name__)
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://elisee:a0u3mIs81CFQ11daiCmnioM55vWxaMOW@dpg-d0pmk56mcj7s73eaupd0-a.frankfurt-postgres.render.com/ticketing_zng0'
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://ticketing_xvoq_user:8qkPANbuhRWe0gLi78Kvjb1wAhz89Hdu@dpg-d2mpcq6r433s73avghb0-a.frankfurt-postgres.render.com/ticketing_xvoq'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SECRET_KEY'] = '4f3b2a5e6d7c9f1e8b3a7d5c2e9f4b1c6d8e3a7c5b9f2d1e4a3c7b5d9e8f6a2'
     app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -208,5 +208,5 @@ def create_app():
 
 
 if __name__ == '__main__':
-    app= create_app()
+    app= create_app()    
     app.run(host='0.0.0.0', port=5000, debug=True)
