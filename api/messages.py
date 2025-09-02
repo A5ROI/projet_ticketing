@@ -105,7 +105,7 @@ def init_messages_routes(app):
             email_query= text("""
                 SELECT u.email, t.subject
                 FROM ticket t
-                JOIN user u ON t.created_by = u.id
+                JOIN "user" u ON t.created_by = u.id
                 WHERE t.id = :ticket_id
                 """)
             result = db.session.execute(email_query, {'ticket_id': data['ticket_id']}).fetchone()
@@ -127,13 +127,14 @@ def init_messages_routes(app):
                     'content': data['content'],
                     'sender_type': sender_type,
                     'sender_name': sender_type,
-                    'created_at': datetime.now().strftime('%d/%m/%Y %H:%M')
+                    'created_at': datetime.now()
                 }
             })
             
         except Exception as e:
             db.session.rollback()
             print(f"Erreur dans send_helper_message: {str(e)}")
+            print(str(e))
             return jsonify({'error': str(e)}), 500
 
 
@@ -148,7 +149,7 @@ def init_messages_routes(app):
                     m.sender_type,
                     m.sender_id,
                     u.username as sender_name,
-                    TO_CHAR(m.created_at, '%d/%m/%Y %H:%i') as created_at
+                    TO_CHAR(m.created_at, 'DD/MM/YYYY HH24:MI') as created_at
                 FROM message m
                 LEFT JOIN "user" u ON m.sender_id = u.id
                 WHERE m.ticket_id = :ticket_id
